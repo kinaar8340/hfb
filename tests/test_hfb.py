@@ -8,7 +8,8 @@ from hfb.analog_gravity.acoustic import acoustic_metric_components, draining_vor
 from hfb.bubble.stability import bubble_stability_metrics
 from hfb.bubble.warp_conduit import flux_bubble_metric
 from hfb.defects.conformal import ricci_scalar, solve_conformal_poisson
-from hfb.defects.densities import exponential_ring, gaussian_defect
+from hfb.defects.densities import exponential_ring, gaussian_defect, toroidal_bubble_wall
+from hfb.utils.viz import plot_flux_bubble_3d
 from hfb.hopf.fibration import hopf_coordinates, hopf_map
 from hfb.hopf.hopfion import toroidal_hopfion_director
 from hfb.optics.lg_modes import lg_mode_full
@@ -65,11 +66,43 @@ def test_nematic_deflection_positive():
     assert delta_phi > 0.0
 
 
+def test_toroidal_bubble_wall_peaks_on_ring():
+    x, y = cartesian_grid(64, 64, extent=3.0)
+    lam = toroidal_bubble_wall(x, y, major_radius=1.0, minor_radius=0.35)
+    r = np.sqrt(x**2 + y**2)
+    on_ring = lam[np.isclose(r, 1.0, atol=0.15)]
+    off_ring = lam[r < 0.3]
+    assert np.max(on_ring) > np.max(off_ring)
+
+
+def test_flux_bubble_metric_toroidal_profile():
+    x, y = cartesian_grid(48, 48, extent=3.0)
+    dx = float(x[0, 1] - x[0, 0])
+    metric = flux_bubble_metric(
+        x,
+        y,
+        dx=dx,
+        defect_profile="toroidal_bubble_wall",
+        major_radius=1.0,
+        minor_radius=0.35,
+    )
+    assert np.max(metric["defect_density"]) > 0.0
+    assert np.isfinite(metric["omega"]).all()
+
+
 def test_flux_bubble_metric_keys():
     x, y = cartesian_grid(48, 48, extent=3.0)
     dx = x[0, 1] - x[0, 0]
     metric = flux_bubble_metric(x, y, dx=dx)
-    for key in ("omega", "shift", "g_tt", "n_eff", "defect_density"):
+    for key in ("omega", "shift", "g_tt", "n_eff", "defect_density", "vx", "vy"):
         assert key in metric
     report = bubble_stability_metrics(metric, dx)
     assert hasattr(report, "stable_proxy")
+
+
+def test_plot_flux_bubble_3d_returns_figure():
+    x, y = cartesian_grid(32, 32, extent=2.0)
+    dx = float(x[0, 1] - x[0, 0])
+    metric = flux_bubble_metric(x, y, dx=dx)
+    fig = plot_flux_bubble_3d(metric["omega"], metric["vx"], metric["vy"], dx=dx)
+    assert fig.axes

@@ -13,6 +13,7 @@ from hfb.bubble.warp_conduit import flux_bubble_metric
 from hfb.optics.raytrace import trace_rays_conformal
 from hfb.optics.slm_export import SLMExportConfig, VortexConduitSpec, export_flux_bubble_hologram
 from hfb.utils.grid import cartesian_grid
+from hfb.utils.viz import plot_flux_bubble_3d
 
 
 def load_config(path: Path) -> dict:
@@ -20,11 +21,12 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def run_bubble_demo(cfg: dict, output_dir: Path) -> None:
+def run_bubble_demo(cfg: dict, output_dir: Path, viz3d: bool = False) -> None:
     import matplotlib.pyplot as plt
 
     grid = cfg["grid"]
     bubble = cfg["bubble"]
+    hopf = cfg.get("hopf", {})
     x, y = cartesian_grid(grid["nx"], grid["ny"], extent=grid["extent"])
     dx = float(x[0, 1] - x[0, 0])
 
@@ -37,6 +39,9 @@ def run_bubble_demo(cfg: dict, output_dir: Path) -> None:
         circulation=bubble["circulation"],
         c0=bubble["sound_speed"],
         dx=dx,
+        defect_profile=bubble.get("defect_profile", "exponential_ring"),
+        major_radius=hopf.get("major_radius"),
+        minor_radius=hopf.get("minor_radius"),
     )
     report = bubble_stability_metrics(metric, dx)
 
@@ -73,6 +78,14 @@ def run_bubble_demo(cfg: dict, output_dir: Path) -> None:
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     print(f"Wrote {out_path}")
+
+    if viz3d:
+        fig3d = plot_flux_bubble_3d(metric["omega"], metric["vx"], metric["vy"], dx=dx)
+        out_3d = output_dir / "flux_bubble_3d.png"
+        fig3d.savefig(out_3d, dpi=150)
+        plt.close(fig3d)
+        print(f"Wrote {out_3d}")
+
     print(report)
 
 
@@ -80,7 +93,17 @@ def run_sweep_demo(cfg: dict) -> None:
     sweep = cfg.get("sweep", {})
     radii = sweep.get("radii", [0.8, 1.0, 1.2])
     circs = sweep.get("circulations", [0.2, 0.4, 0.6])
-    results = parameter_sweep(radii, circs, nx=cfg["grid"]["nx"], extent=cfg["grid"]["extent"])
+    bubble = cfg.get("bubble", {})
+    hopf = cfg.get("hopf", {})
+    results = parameter_sweep(
+        radii,
+        circs,
+        nx=cfg["grid"]["nx"],
+        extent=cfg["grid"]["extent"],
+        defect_profile=bubble.get("defect_profile", "exponential_ring"),
+        major_radius=hopf.get("major_radius"),
+        minor_radius=hopf.get("minor_radius"),
+    )
     print("radius  circulation  stable  max|R|  ergo_frac")
     for radius, circ, report in results:
         print(
@@ -104,13 +127,14 @@ def main() -> None:
         help="Output directory for figures",
     )
     parser.add_argument("--sweep", action="store_true", help="Run parameter sweep instead of plot demo")
+    parser.add_argument("--viz3d", action="store_true", help="Also write flux_bubble_3d.png surface plot")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     if args.sweep:
         run_sweep_demo(cfg)
     else:
-        run_bubble_demo(cfg, args.output)
+        run_bubble_demo(cfg, args.output, viz3d=args.viz3d)
 
 
 def export_slm_main() -> None:

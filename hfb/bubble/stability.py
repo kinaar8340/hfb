@@ -61,6 +61,9 @@ def parameter_sweep(
     circulations: list[float],
     nx: int = 96,
     extent: float = 4.0,
+    defect_profile: str = "exponential_ring",
+    major_radius: float | None = None,
+    minor_radius: float | None = None,
 ) -> list[tuple[float, float, StabilityReport]]:
     """Sweep bubble radius and vortex circulation; return stability reports."""
     x, y = cartesian_grid(nx, nx, extent=extent)
@@ -68,7 +71,16 @@ def parameter_sweep(
     results: list[tuple[float, float, StabilityReport]] = []
     for radius in radii:
         for circ in circulations:
-            metric = flux_bubble_metric(x, y, bubble_radius=radius, circulation=circ, dx=dx)
+            metric = flux_bubble_metric(
+                x,
+                y,
+                bubble_radius=radius,
+                circulation=circ,
+                dx=dx,
+                defect_profile=defect_profile,
+                major_radius=major_radius,
+                minor_radius=minor_radius,
+            )
             report = bubble_stability_metrics(metric, dx)
             results.append((radius, circ, report))
     return results

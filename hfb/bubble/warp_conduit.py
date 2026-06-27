@@ -7,8 +7,7 @@ from numpy.typing import NDArray
 
 from hfb.analog_gravity.acoustic import acoustic_metric_components, draining_vortex_flow
 from hfb.defects.conformal import solve_conformal_poisson
-from hfb.defects.densities import exponential_ring, gaussian_defect
-
+from hfb.defects.densities import build_defect_density
 
 def index_from_omega(omega: NDArray[np.floating], n0: float = 1.0, alpha: float = 0.5) -> NDArray[np.floating]:
     """Map conformal factor to effective refractive index n = n₀ e^{αΩ}."""
@@ -41,6 +40,9 @@ def flux_bubble_metric(
     circulation: float = 0.4,
     c0: float = 1.0,
     dx: float = 0.1,
+    defect_profile: str = "exponential_ring",
+    major_radius: float | None = None,
+    minor_radius: float | None = None,
 ) -> dict[str, NDArray[np.floating]]:
     """
     Build a composite effective metric from:
@@ -48,8 +50,16 @@ def flux_bubble_metric(
     - draining vortex flow (acoustic g_μν),
     - shift profile (warp-conduit analog).
     """
-    lam = exponential_ring(x, y, radius=bubble_radius, width=wall_width, amplitude=defect_amplitude)
-    lam += 0.25 * gaussian_defect(x, y, amplitude=defect_amplitude, sigma=wall_width)
+    lam = build_defect_density(
+        x,
+        y,
+        profile=defect_profile,
+        bubble_radius=bubble_radius,
+        wall_width=wall_width,
+        defect_amplitude=defect_amplitude,
+        major_radius=major_radius,
+        minor_radius=minor_radius,
+    )
     omega = solve_conformal_poisson(lam, dx)
 
     vx, vy = draining_vortex_flow(x, y, circulation=circulation)
@@ -62,6 +72,8 @@ def flux_bubble_metric(
         "omega": omega,
         "defect_density": lam,
         "shift": shift,
+        "vx": vx,
+        "vy": vy,
         "n_eff": n_eff,
         **acoustic,
     }

@@ -11,9 +11,12 @@ import pytest
 from hfb.analog_gravity.symbolic import (
     acoustic_line_element,
     acoustic_metric_tensor,
+    alcubierre_line_element,
+    compare_effective_warp,
     conformal_ricci_scalar,
     evaluate_metric_numeric,
     horizon_condition,
+    lambdify_alcubierre_shift,
 )
 from hfb.bec.acoustic import bec_acoustic_metric, bec_sound_speed
 from hfb.bec.bogoliubov import bogoliubov_dispersion
@@ -117,6 +120,29 @@ def test_symbolic_summary_keys():
     summary = symbolic_summary()
     assert "horizon" in summary
     assert "line_element" in summary
+    assert "alcubierre_shift" in summary
+
+
+def test_alcubierre_line_element_has_shift():
+    ds2, shift, shape = alcubierre_line_element(vs=0.5, rs=1.0, sigma=0.5)
+    assert ds2 is not None
+    assert shift is not None
+    assert shape is not None
+
+
+def test_compare_effective_warp_diff_zero_at_match():
+    import sympy as sp
+
+    x = sp.Symbol("x")
+    diff, ratio = compare_effective_warp(x, x)
+    assert sp.simplify(diff) == 0
+    assert sp.simplify(ratio) == 1
+
+
+def test_lambdify_alcubierre_shift_finite():
+    shift_fn = lambdify_alcubierre_shift()
+    val = shift_fn(0.0, 0.0, 0.5, 1.0, 0.5)
+    assert np.isfinite(val)
 
 
 def test_vqc_proto_status_dataclass():

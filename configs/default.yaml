@@ -10,6 +10,7 @@ bubble:
   radius: 1.0
   wall_width: 0.25
   defect_amplitude: 1.0
+  defect_profile: toroidal_bubble_wall
   circulation: 0.35
   sound_speed: 1.0
 

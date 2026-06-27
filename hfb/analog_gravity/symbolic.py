@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import sympy as sp
-from sympy import Matrix, symbols
+from sympy import Function, Matrix, symbols, sqrt, tanh
 
 
 def acoustic_symbols() -> dict[str, sp.Symbol]:
@@ -150,11 +150,70 @@ def evaluate_metric_numeric(
     return [[float(arr[i, j]) for j in range(3)] for i in range(3)]
 
 
+def alcubierre_symbols() -> tuple[sp.Symbol, sp.Symbol, sp.Symbol, sp.Symbol, sp.Symbol, sp.Symbol]:
+    """Symbols for a simplified 2+1D Alcubierre-like metric."""
+    t, x, y = symbols("t x y", real=True)
+    vs, rs, sigma = symbols("v_s r_s sigma", positive=True, real=True)
+    return t, x, y, vs, rs, sigma
+
+
+def alcubierre_shape_function(
+    x: sp.Expr,
+    y: sp.Expr,
+    rs: sp.Expr | sp.Symbol,
+    sigma: sp.Expr | sp.Symbol,
+) -> sp.Expr:
+    """Alcubierre bubble shape function f(r) in a 2+1D slice."""
+    r = sp.sqrt(x**2 + y**2)
+    return (
+        sp.tanh((rs + sigma - r) / sigma) - sp.tanh((rs - sigma - r) / sigma)
+    ) / 2
+
+
+def alcubierre_line_element(
+    vs: float | sp.Expr = 0.5,
+    rs: float | sp.Expr = 1.0,
+    sigma: float | sp.Expr = 0.5,
+) -> tuple[sp.Expr, sp.Expr, sp.Expr]:
+    """Return Alcubierre-like line element ds², shift β, and shape f(r)."""
+    t, x, y, vs_sym, rs_sym, sigma_sym = alcubierre_symbols()
+    dt, dx, dy = symbols("dt dx dy", real=True)
+    f_expr = alcubierre_shape_function(x, y, rs_sym, sigma_sym)
+    shift = vs_sym * f_expr
+    ds2 = -dt**2 + (dx - shift * dt) ** 2 + dy**2
+    if not isinstance(vs, sp.Expr):
+        subs = {vs_sym: vs, rs_sym: rs, sigma_sym: sigma}
+        return ds2.subs(subs), shift.subs(subs), f_expr.subs(subs)
+    return ds2, shift, f_expr
+
+
+def compare_effective_warp(
+    analog_shift: sp.Expr,
+    gr_shift: sp.Expr,
+    subs_dict: dict | None = None,
+) -> tuple[sp.Expr, sp.Expr]:
+    """Symbolic difference and ratio between analog and GR warp shift."""
+    diff = sp.simplify(analog_shift - gr_shift)
+    ratio = sp.simplify(analog_shift / gr_shift) if gr_shift != 0 else sp.S.NaN
+    if subs_dict:
+        diff = diff.subs(subs_dict)
+        ratio = ratio.subs(subs_dict)
+    return diff, ratio
+
+
+def lambdify_alcubierre_shift() -> Any:
+    """NumPy lambdify (x, y, v_s, r_s, sigma) → Alcubierre shift β(x, y)."""
+    _, shift, _ = alcubierre_line_element()
+    x, y, vs, rs, sigma = symbols("x y v_s r_s sigma", real=True)
+    return sp.lambdify((x, y, vs, rs, sigma), shift, modules="numpy")
+
+
 def symbolic_summary() -> dict[str, str]:
     """Human-readable SymPy summaries for CLI and notebooks."""
     sym = acoustic_symbols()
     x, y = sym["x"], sym["y"]
     vx, vy = draining_vortex_velocity(x, y, circulation=1.0, drain=0.1)
+    _, alc_shift, alc_shape = alcubierre_line_element()
     return {
         "line_element": str(acoustic_line_element(sym)),
         "horizon": str(sp.factor(horizon_condition(sym))),
@@ -165,4 +224,6 @@ def symbolic_summary() -> dict[str, str]:
         "metric_g00_at_v03_cs1": str(acoustic_metric_tensor(sym)[0, 0].subs(
             {sym["vx"]: 0.3, sym["vy"]: 0.4, sym["cs"]: 1.0}
         )),
+        "alcubierre_shift": str(alc_shift),
+        "alcubierre_shape": str(alc_shape),
     }
