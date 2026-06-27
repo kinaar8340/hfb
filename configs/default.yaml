@@ -1,0 +1,33 @@
+# Hopf Flux Bubble — default simulation parameters
+# Analog effective metric from defect wall + vortex flow + shift profile
+
+grid:
+  nx: 128
+  ny: 128
+  extent: 4.0
+
+bubble:
+  radius: 1.0
+  wall_width: 0.25
+  defect_amplitude: 1.0
+  circulation: 0.35
+  sound_speed: 1.0
+
+sweep:
+  radii: [0.7, 0.9, 1.0, 1.2, 1.5]
+  circulations: [0.15, 0.3, 0.45, 0.6]
+
+optics:
+  lg_winding: 1
+  beam_waist: 1.0
+  delta_n: 0.08
+  n_eff: 1.55
+
+hopf:
+  major_radius: 1.0
+  minor_radius: 0.35
+  hopf_index: 1
+
+caveats: >
+  Effective analog only — not literal GR curvature or superluminal transport.
+  Stability metrics are heuristic proxies for tabletop exploration.
