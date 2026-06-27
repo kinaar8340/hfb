@@ -17,6 +17,8 @@ Cross-referencing analog gravity and topological defects literature:
 | Hopf / Hopfions | `hopf/` | Linked toroidal flux walls; topological protection |
 | Optics / nematics | `optics/` | LG vortices, cosmic-string lensing, ray tracing |
 | Flux bubble | `bubble/` | Shift profile + defect wall + vortex flow composite |
+| BEC analog | `bec/` | Thomas-Fermi density, vortex rings, Bogoliubov dispersion |
+| SLM export | `optics/slm_export.py` | Vortex ring holograms (vqc_proto-coupled) |
 
 Broader framing: [concept thread on X](https://x.com/kinaar8340/status/2070662842496491671)
 
@@ -24,13 +26,23 @@ Broader framing: [concept thread on X](https://x.com/kinaar8340/status/207066284
 
 ```bash
 cd ~/Projects/hfb
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[all]"
 pytest
 hfb-demo                          # writes outputs/flux_bubble_demo.png
 hfb-demo --sweep                  # stability parameter sweep
-python examples/flux_bubble_demo.py
+hfb-export-slm                      # flux-bubble vortex ring SLM hologram
+jupyter notebook notebooks/       # interactive exploration
 ```
+
+### Optional extras
+
+| Extra | Install | Enables |
+|-------|---------|---------|
+| `symbolic` | `pip install -e ".[symbolic]"` | SymPy acoustic metrics (`analog_gravity/symbolic.py`) |
+| `notebook` | `pip install -e ".[notebook]"` | Jupyter notebooks under `notebooks/` |
+| `slm` | `pip install -e ".[slm]"` | SLM PNG export (Pillow) |
+| `all` | `pip install -e ".[all]"` | Everything above + dev tools |
 
 ## Configuration
 

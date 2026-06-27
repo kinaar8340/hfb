@@ -11,6 +11,7 @@ import yaml
 from hfb.bubble.stability import bubble_stability_metrics, parameter_sweep
 from hfb.bubble.warp_conduit import flux_bubble_metric
 from hfb.optics.raytrace import trace_rays_conformal
+from hfb.optics.slm_export import SLMExportConfig, VortexConduitSpec, export_flux_bubble_hologram
 from hfb.utils.grid import cartesian_grid
 
 
@@ -110,6 +111,35 @@ def main() -> None:
         run_sweep_demo(cfg)
     else:
         run_bubble_demo(cfg, args.output)
+
+
+def export_slm_main() -> None:
+    parser = argparse.ArgumentParser(description="Export HFB flux-bubble SLM hologram")
+    parser.add_argument("--config", type=Path, default=Path("configs/default.yaml"))
+    parser.add_argument("--output", type=Path, default=Path("outputs/slm_hologram"))
+    parser.add_argument("--preset", type=str, default=None, help="vqc_proto SLM device preset")
+    parser.add_argument("--frames", type=int, default=1)
+    args = parser.parse_args()
+
+    cfg = load_config(args.config)
+    slm_cfg_yaml = cfg.get("slm", {})
+    preset = args.preset or slm_cfg_yaml.get("device_preset", "generic_512")
+    spec = VortexConduitSpec(
+        ring_radius_mm=slm_cfg_yaml.get("ring_radius_mm", 1.2),
+        num_vortices=slm_cfg_yaml.get("num_vortices", 12),
+        winding=slm_cfg_yaml.get("winding", cfg.get("optics", {}).get("lg_winding", 1)),
+        amplitude=slm_cfg_yaml.get("amplitude", 1.0),
+        core_sigma_mm=slm_cfg_yaml.get("core_sigma_mm", 0.25),
+    )
+    export_cfg = SLMExportConfig.from_vqc_preset(preset, extent_mm=slm_cfg_yaml.get("extent_mm", 4.0))
+    summary = export_flux_bubble_hologram(
+        args.output,
+        spec=spec,
+        cfg=export_cfg,
+        num_frames=args.frames,
+        phase_twist_per_frame=slm_cfg_yaml.get("phase_twist_per_frame", 0.0),
+    )
+    print(summary)
 
 
 if __name__ == "__main__":

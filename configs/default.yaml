@@ -28,6 +28,25 @@ hopf:
   minor_radius: 0.35
   hopf_index: 1
 
+bec:
+  n0: 1.0
+  trap_radius: 1.5
+  interaction: 1.0
+  num_vortices: 8
+  vortex_ring_radius: 1.0
+  winding: 1
+  temperature: 0.0
+
+slm:
+  device_preset: generic_512
+  ring_radius_mm: 1.2
+  num_vortices: 12
+  winding: 1
+  amplitude: 1.0
+  core_sigma_mm: 0.25
+  extent_mm: 4.0
+  phase_twist_per_frame: 0.0
+
 caveats: >
   Effective analog only — not literal GR curvature or superluminal transport.
   Stability metrics are heuristic proxies for tabletop exploration.
