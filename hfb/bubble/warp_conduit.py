@@ -9,6 +9,7 @@ from hfb.analog_gravity.acoustic import acoustic_metric_components, draining_vor
 from hfb.defects.conformal import solve_conformal_poisson
 from hfb.defects.densities import build_defect_density
 
+
 def index_from_omega(omega: NDArray[np.floating], n0: float = 1.0, alpha: float = 0.5) -> NDArray[np.floating]:
     """Map conformal factor to effective refractive index n = n₀ e^{αΩ}."""
     return n0 * np.exp(alpha * omega)
@@ -43,6 +44,9 @@ def flux_bubble_metric(
     defect_profile: str = "exponential_ring",
     major_radius: float | None = None,
     minor_radius: float | None = None,
+    use_3d_torus: bool = False,
+    z_slice: float = 0.0,
+    hopf_index: int = 1,
 ) -> dict[str, NDArray[np.floating]]:
     """
     Build a composite effective metric from:
@@ -59,6 +63,9 @@ def flux_bubble_metric(
         defect_amplitude=defect_amplitude,
         major_radius=major_radius,
         minor_radius=minor_radius,
+        use_3d_torus=use_3d_torus,
+        z_slice=z_slice,
+        hopf_index=hopf_index,
     )
     omega = solve_conformal_poisson(lam, dx)
 

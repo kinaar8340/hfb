@@ -1,5 +1,10 @@
 """Hopf Flux Bubble — effective warp-conduit synthesis."""
 
+from .topology import (
+    defect_winding_on_ring,
+    integrated_curvature_flux,
+    linking_proxy,
+)
 from .warp_conduit import (
     effective_shift_profile,
     flux_bubble_metric,
@@ -13,4 +18,7 @@ __all__ = [
     "index_from_omega",
     "bubble_stability_metrics",
     "parameter_sweep",
+    "integrated_curvature_flux",
+    "defect_winding_on_ring",
+    "linking_proxy",
 ]

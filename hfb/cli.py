@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from hfb.analog_gravity.warp_compare import compare_warp_numeric, plot_warp_comparison
 from hfb.bubble.stability import bubble_stability_metrics, parameter_sweep
 from hfb.bubble.warp_conduit import flux_bubble_metric
 from hfb.optics.raytrace import trace_rays_conformal
@@ -21,12 +22,18 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
+def _hopf_flags(cfg: dict) -> tuple[dict, dict, bool]:
+    bubble = cfg.get("bubble", {})
+    hopf = cfg.get("hopf", {})
+    use_3d = bubble.get("use_3d_torus", hopf.get("use_3d_torus", False))
+    return bubble, hopf, use_3d
+
+
 def run_bubble_demo(cfg: dict, output_dir: Path, viz3d: bool = False) -> None:
     import matplotlib.pyplot as plt
 
     grid = cfg["grid"]
-    bubble = cfg["bubble"]
-    hopf = cfg.get("hopf", {})
+    bubble, hopf, use_3d = _hopf_flags(cfg)
     x, y = cartesian_grid(grid["nx"], grid["ny"], extent=grid["extent"])
     dx = float(x[0, 1] - x[0, 0])
 
@@ -42,8 +49,20 @@ def run_bubble_demo(cfg: dict, output_dir: Path, viz3d: bool = False) -> None:
         defect_profile=bubble.get("defect_profile", "exponential_ring"),
         major_radius=hopf.get("major_radius"),
         minor_radius=hopf.get("minor_radius"),
+        use_3d_torus=use_3d,
+        z_slice=hopf.get("z_slice", 0.0),
+        hopf_index=hopf.get("hopf_index", 1),
     )
-    report = bubble_stability_metrics(metric, dx)
+    report = bubble_stability_metrics(
+        metric,
+        dx,
+        x=x,
+        y=y,
+        major_radius=hopf.get("major_radius", bubble["radius"]),
+        hopf_index=hopf.get("hopf_index", 1),
+        use_3d_torus=use_3d,
+        defect_profile=bubble.get("defect_profile", "toroidal_bubble_wall"),
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -69,9 +88,9 @@ def run_bubble_demo(cfg: dict, output_dir: Path, viz3d: bool = False) -> None:
     axes[1, 1].set_aspect("equal")
 
     fig.suptitle(
-        f"HFB Flux Bubble | stable_proxy={report.stable_proxy} | "
-        f"max|R|={report.max_ricci:.2f} | ergo={report.ergo_fraction:.3f}",
-        fontsize=11,
+        f"HFB | stable={report.stable_proxy} | max|R|={report.max_ricci:.2f} | "
+        f"Φ_R={report.curvature_flux:.3f} | link={report.linking_proxy:.1f}",
+        fontsize=10,
     )
     fig.tight_layout()
     out_path = output_dir / "flux_bubble_demo.png"
@@ -80,7 +99,13 @@ def run_bubble_demo(cfg: dict, output_dir: Path, viz3d: bool = False) -> None:
     print(f"Wrote {out_path}")
 
     if viz3d:
-        fig3d = plot_flux_bubble_3d(metric["omega"], metric["vx"], metric["vy"], dx=dx)
+        fig3d = plot_flux_bubble_3d(
+            metric["omega"],
+            metric["vx"],
+            metric["vy"],
+            dx=dx,
+            extent=grid["extent"],
+        )
         out_3d = output_dir / "flux_bubble_3d.png"
         fig3d.savefig(out_3d, dpi=150)
         plt.close(fig3d)
@@ -89,12 +114,80 @@ def run_bubble_demo(cfg: dict, output_dir: Path, viz3d: bool = False) -> None:
     print(report)
 
 
+def run_compare_warp(cfg: dict, output_dir: Path) -> None:
+    """Compare toroidal vs exponential profiles + warp fidelity to Alcubierre."""
+    import matplotlib.pyplot as plt
+
+    grid = cfg["grid"]
+    bubble, hopf, use_3d = _hopf_flags(cfg)
+    warp = cfg.get("warp_compare", {})
+    x, y = cartesian_grid(grid["nx"], grid["ny"], extent=grid["extent"])
+    dx = float(x[0, 1] - x[0, 0])
+
+    vs = warp.get("vs", 0.3)
+    rs = warp.get("rs", bubble.get("radius", 1.0))
+    sigma = warp.get("sigma", bubble.get("wall_width", 0.25))
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"{'profile':<22} {'stable':>6} {'max|R|':>8} {'curv_flux':>10} {'link':>5} {'fidelity':>10}")
+    print("-" * 72)
+
+    default_profile = bubble.get("defect_profile", "toroidal_bubble_wall")
+    for profile in ("toroidal_bubble_wall", "exponential_ring"):
+        profile_3d = use_3d and profile == "toroidal_bubble_wall"
+        metric = flux_bubble_metric(
+            x,
+            y,
+            bubble_radius=bubble["radius"],
+            wall_width=bubble["wall_width"],
+            defect_amplitude=bubble["defect_amplitude"],
+            circulation=bubble["circulation"],
+            c0=bubble["sound_speed"],
+            dx=dx,
+            defect_profile=profile,
+            major_radius=hopf.get("major_radius"),
+            minor_radius=hopf.get("minor_radius"),
+            use_3d_torus=profile_3d,
+            z_slice=hopf.get("z_slice", 0.0),
+            hopf_index=hopf.get("hopf_index", 1),
+        )
+        report = bubble_stability_metrics(
+            metric,
+            dx,
+            x=x,
+            y=y,
+            major_radius=hopf.get("major_radius", bubble["radius"]),
+            hopf_index=hopf.get("hopf_index", 1),
+            use_3d_torus=profile_3d,
+            defect_profile=profile,
+        )
+        _, warp_report = compare_warp_numeric(metric["shift"], x, y, dx, vs=vs, rs=rs, sigma=sigma)
+        print(
+            f"{profile:<22} {str(report.stable_proxy):>6} {report.max_ricci:8.2f} "
+            f"{report.curvature_flux:10.3f} {report.linking_proxy:5.1f} "
+            f"{warp_report.warp_fidelity:10.4f}"
+        )
+
+        if profile == default_profile:
+            gr_shift, wr = compare_warp_numeric(metric["shift"], x, y, dx, vs=vs, rs=rs, sigma=sigma)
+            fig = plot_warp_comparison(
+                x,
+                y,
+                metric["shift"],
+                gr_shift,
+                wr,
+                extent=grid["extent"],
+                output_path=str(output_dir / "warp_compare.png"),
+            )
+            plt.close(fig)
+            print(f"Wrote {output_dir / 'warp_compare.png'}")
+
+
 def run_sweep_demo(cfg: dict) -> None:
     sweep = cfg.get("sweep", {})
     radii = sweep.get("radii", [0.8, 1.0, 1.2])
     circs = sweep.get("circulations", [0.2, 0.4, 0.6])
-    bubble = cfg.get("bubble", {})
-    hopf = cfg.get("hopf", {})
+    bubble, hopf, use_3d = _hopf_flags(cfg)
     results = parameter_sweep(
         radii,
         circs,
@@ -103,6 +196,8 @@ def run_sweep_demo(cfg: dict) -> None:
         defect_profile=bubble.get("defect_profile", "exponential_ring"),
         major_radius=hopf.get("major_radius"),
         minor_radius=hopf.get("minor_radius"),
+        use_3d_torus=use_3d,
+        hopf_index=hopf.get("hopf_index", 1),
     )
     print("radius  circulation  stable  max|R|  ergo_frac")
     for radius, circ, report in results:
@@ -114,24 +209,17 @@ def run_sweep_demo(cfg: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hopf Flux Bubble demos")
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=Path("configs/default.yaml"),
-        help="YAML config path",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("outputs"),
-        help="Output directory for figures",
-    )
-    parser.add_argument("--sweep", action="store_true", help="Run parameter sweep instead of plot demo")
-    parser.add_argument("--viz3d", action="store_true", help="Also write flux_bubble_3d.png surface plot")
+    parser.add_argument("--config", type=Path, default=Path("configs/default.yaml"))
+    parser.add_argument("--output", type=Path, default=Path("outputs"))
+    parser.add_argument("--sweep", action="store_true", help="Parameter sweep")
+    parser.add_argument("--viz3d", action="store_true", help="Write flux_bubble_3d.png")
+    parser.add_argument("--compare-warp", action="store_true", help="Toroidal vs exponential + fidelity")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    if args.sweep:
+    if args.compare_warp:
+        run_compare_warp(cfg, args.output)
+    elif args.sweep:
         run_sweep_demo(cfg)
     else:
         run_bubble_demo(cfg, args.output, viz3d=args.viz3d)
@@ -141,7 +229,7 @@ def export_slm_main() -> None:
     parser = argparse.ArgumentParser(description="Export HFB flux-bubble SLM hologram")
     parser.add_argument("--config", type=Path, default=Path("configs/default.yaml"))
     parser.add_argument("--output", type=Path, default=Path("outputs/slm_hologram"))
-    parser.add_argument("--preset", type=str, default=None, help="vqc_proto SLM device preset")
+    parser.add_argument("--preset", type=str, default=None)
     parser.add_argument("--frames", type=int, default=1)
     args = parser.parse_args()
 
@@ -167,7 +255,6 @@ def export_slm_main() -> None:
 
 
 def symbolic_main() -> None:
-    """Print SymPy acoustic metric summaries (requires [symbolic] extra)."""
     try:
         from hfb.analog_gravity.symbolic import symbolic_summary
     except ImportError as exc:
@@ -204,39 +291,19 @@ def bec_main() -> None:
 
 
 def check_ecosystem_main() -> None:
-    """Report optional feature availability (symbolic, notebook, vqc_proto, bec)."""
     from hfb.integration.vqc_proto import vqc_proto_status
 
     print("HFB feature checklist")
     print("-" * 40)
-
-    try:
-        import sympy  # noqa: F401
-
-        print("symbolic (SymPy):     OK")
-    except ImportError:
-        print("symbolic (SymPy):     missing — pip install -e \".[symbolic]\"")
-
-    try:
-        import ipywidgets  # noqa: F401
-
-        print("notebook (widgets):   OK")
-    except ImportError:
-        print("notebook (widgets):   missing — pip install -e \".[notebook]\"")
-
-    try:
-        import PIL  # noqa: F401
-
-        print("slm (Pillow):         OK")
-    except ImportError:
-        print("slm (Pillow):         missing — pip install -e \".[slm]\"")
-
+    for name, mod in [("symbolic", "sympy"), ("notebook", "ipywidgets"), ("slm", "PIL")]:
+        try:
+            __import__(mod)
+            print(f"{name:20s} OK")
+        except ImportError:
+            print(f"{name:20s} missing")
     status = vqc_proto_status()
-    print(f"vqc_proto root:       {status.root or 'not found'}")
-    print(f"vqc_proto LG modes:   {status.lg_modes}")
-    print(f"vqc_proto SLM export: {status.slm_typehead}")
-    print(f"vqc_proto note:       {status.message}")
-    print("bec acoustic backend: built-in (hfb-bec-demo)")
+    print(f"vqc_proto LG:        {status.lg_modes}")
+    print(f"vqc_proto SLM:       {status.slm_typehead}")
 
 
 if __name__ == "__main__":

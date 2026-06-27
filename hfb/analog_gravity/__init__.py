@@ -26,6 +26,13 @@ try:
         horizon_condition,
         lambdify_alcubierre_shift,
     )
+    from .warp_compare import (
+        WarpComparisonReport,
+        compare_warp_numeric,
+        evaluate_gr_shift,
+        plot_warp_comparison,
+        warp_fidelity,
+    )
 
     __all__ += [
         "symbolic",
@@ -37,6 +44,11 @@ try:
         "alcubierre_line_element",
         "compare_effective_warp",
         "lambdify_alcubierre_shift",
+        "WarpComparisonReport",
+        "compare_warp_numeric",
+        "evaluate_gr_shift",
+        "plot_warp_comparison",
+        "warp_fidelity",
     ]
 except ImportError:
     pass

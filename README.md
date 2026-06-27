@@ -31,6 +31,28 @@ Cross-referencing analog gravity and topological defects literature.
 
 Broader framing: [concept thread on X](https://x.com/kinaar8340/status/2070662842496491671)
 
+## What's new in v0.1.3
+
+- **Toroidal bubble wall** — `toroidal_bubble_wall` defect profile (default in `configs/default.yaml`) gives smoother, Hopfion-motivated curvature vs the legacy `exponential_ring`
+- **Alcubierre symbolic layer** — `alcubierre_line_element`, `compare_effective_warp`, `lambdify_alcubierre_shift` in `analog_gravity/symbolic.py`
+- **3D visualization** — `plot_flux_bubble_3d` and `hfb-demo --viz3d` for conformal Ω + flow quivers
+- **CLI helpers** — `hfb-symbolic`, `hfb-bec-demo`, `hfb-check` for feature and ecosystem status
+
+**v0.1.4** adds pseudo-3D torus slices (`hopf.use_3d_torus`), warp fidelity comparison (`hfb-demo --compare-warp`), and topological stability diagnostics (curvature flux Φ_R, winding proxy).
+
+## What's new
+
+### v0.1.4
+- **3D torus slice** — `use_3d_torus=True` with `hopf_index` texture on the bubble wall
+- **Warp comparison** — `hfb-demo --compare-warp` plots analog vs Alcubierre shift + L¹ fidelity
+- **Topology diagnostics** — curvature flux Φ_R, linking proxy, ring winding in `StabilityReport`
+- **Notebook 01** — 3D surface + sliders for `wall_width`, `minor_radius`, `hopf_index`
+
+### v0.1.3
+- **`toroidal_bubble_wall`** defect profile (smoother curvature: max |R| ≈ 2.6 vs ~4.7 for `exponential_ring`)
+- **Alcubierre symbolic** — `alcubierre_line_element`, `compare_effective_warp`, `lambdify_alcubierre_shift`
+- **3D viz** — `plot_flux_bubble_3d` + `hfb-demo --viz3d`
+
 ## Quick Start
 
 ```bash
@@ -40,6 +62,10 @@ pip install -e ".[all]"
 hfb-check                         # feature + vqc_proto availability
 pytest
 hfb-demo                          # → outputs/flux_bubble_demo.png
+hfb-demo --viz3d                  # + flux_bubble_3d.png
+hfb-demo --compare-warp           # toroidal vs exponential + warp fidelity
+hfb-demo --viz3d                  # also flux_bubble_3d.png
+hfb-demo --compare-warp           # toroidal vs exponential + warp fidelity
 hfb-symbolic                      # SymPy acoustic metrics (needs [symbolic])
 hfb-bec-demo                      # BEC acoustic backend figure
 hfb-export-slm                    # vortex ring SLM (vqc_proto LG when found)

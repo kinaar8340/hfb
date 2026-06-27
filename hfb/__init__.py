@@ -2,7 +2,7 @@
 
 from . import analog_gravity, bec, bubble, defects, hopf, integration, optics, utils
 
-__version__ = "0.1.1"
+__version__ = "0.1.4"
 
 __all__ = [
     "analog_gravity",
