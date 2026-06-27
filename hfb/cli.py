@@ -142,5 +142,78 @@ def export_slm_main() -> None:
     print(summary)
 
 
+def symbolic_main() -> None:
+    """Print SymPy acoustic metric summaries (requires [symbolic] extra)."""
+    try:
+        from hfb.analog_gravity.symbolic import symbolic_summary
+    except ImportError as exc:
+        raise SystemExit('Install symbolic extra: pip install -e ".[symbolic]"') from exc
+
+    print("=" * 60)
+    print("HFB — Symbolic Acoustic Metrics")
+    print("=" * 60)
+    for key, value in symbolic_summary().items():
+        print(f"\n[{key}]\n{value}")
+
+
+def bec_main() -> None:
+    parser = argparse.ArgumentParser(description="BEC acoustic backend demo")
+    parser.add_argument("--config", type=Path, default=Path("configs/default.yaml"))
+    parser.add_argument("--output", type=Path, default=Path("outputs"))
+    args = parser.parse_args()
+
+    from hfb.bec.demo import run_bec_acoustic_demo
+
+    cfg = load_config(args.config)
+    bec = cfg.get("bec", {})
+    grid = cfg.get("grid", {})
+    summary = run_bec_acoustic_demo(
+        args.output,
+        nx=grid.get("nx", 96),
+        extent=grid.get("extent", 3.0),
+        ring_radius=bec.get("vortex_ring_radius", 1.0),
+        num_vortices=bec.get("num_vortices", 8),
+        n0=bec.get("n0", 1.0),
+        interaction=bec.get("interaction", 1.0),
+    )
+    print(summary)
+
+
+def check_ecosystem_main() -> None:
+    """Report optional feature availability (symbolic, notebook, vqc_proto, bec)."""
+    from hfb.integration.vqc_proto import vqc_proto_status
+
+    print("HFB feature checklist")
+    print("-" * 40)
+
+    try:
+        import sympy  # noqa: F401
+
+        print("symbolic (SymPy):     OK")
+    except ImportError:
+        print("symbolic (SymPy):     missing — pip install -e \".[symbolic]\"")
+
+    try:
+        import ipywidgets  # noqa: F401
+
+        print("notebook (widgets):   OK")
+    except ImportError:
+        print("notebook (widgets):   missing — pip install -e \".[notebook]\"")
+
+    try:
+        import PIL  # noqa: F401
+
+        print("slm (Pillow):         OK")
+    except ImportError:
+        print("slm (Pillow):         missing — pip install -e \".[slm]\"")
+
+    status = vqc_proto_status()
+    print(f"vqc_proto root:       {status.root or 'not found'}")
+    print(f"vqc_proto LG modes:   {status.lg_modes}")
+    print(f"vqc_proto SLM export: {status.slm_typehead}")
+    print(f"vqc_proto note:       {status.message}")
+    print("bec acoustic backend: built-in (hfb-bec-demo)")
+
+
 if __name__ == "__main__":
     main()

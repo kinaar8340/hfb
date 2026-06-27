@@ -37,12 +37,16 @@ Broader framing: [concept thread on X](https://x.com/kinaar8340/status/207066284
 cd ~/Projects/hfb
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[all]"
+hfb-check                         # feature + vqc_proto availability
 pytest
-hfb-demo                          # writes outputs/flux_bubble_demo.png
-hfb-demo --sweep                  # stability parameter sweep
-hfb-export-slm                      # flux-bubble vortex ring SLM hologram
-jupyter notebook notebooks/       # interactive exploration
+hfb-demo                          # → outputs/flux_bubble_demo.png
+hfb-symbolic                      # SymPy acoustic metrics (needs [symbolic])
+hfb-bec-demo                      # BEC acoustic backend figure
+hfb-export-slm                    # vortex ring SLM (vqc_proto LG when found)
+jupyter notebook notebooks/       # ipywidgets + feature tour
 ```
+
+See **[FEATURES.md](FEATURES.md)** for the four headline capabilities.
 
 ### Optional extras
 

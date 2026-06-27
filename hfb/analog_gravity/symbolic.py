@@ -148,3 +148,21 @@ def evaluate_metric_numeric(
     g_fn = lambdify_acoustic_metric()
     arr = g_fn(vx, vy, cs)
     return [[float(arr[i, j]) for j in range(3)] for i in range(3)]
+
+
+def symbolic_summary() -> dict[str, str]:
+    """Human-readable SymPy summaries for CLI and notebooks."""
+    sym = acoustic_symbols()
+    x, y = sym["x"], sym["y"]
+    vx, vy = draining_vortex_velocity(x, y, circulation=1.0, drain=0.1)
+    return {
+        "line_element": str(acoustic_line_element(sym)),
+        "horizon": str(sp.factor(horizon_condition(sym))),
+        "draining_vx": str(vx),
+        "draining_vy": str(vy),
+        "conformal_ricci": str(conformal_ricci_scalar()),
+        "defect_poisson": str(defect_poisson_equation(sp.Symbol("lambda"))),
+        "metric_g00_at_v03_cs1": str(acoustic_metric_tensor(sym)[0, 0].subs(
+            {sym["vx"]: 0.3, sym["vy"]: 0.4, sym["cs"]: 1.0}
+        )),
+    }

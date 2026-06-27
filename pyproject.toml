@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hopf-flux-bubble"
-version = "0.1.1"
+version = "0.1.2"
 description = "Analog gravity, topological defects, and Hopf structures for effective warp-bubble geometries"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,6 +34,9 @@ all = ["hopf-flux-bubble[dev,notebook,symbolic,slm]"]
 [project.scripts]
 hfb-demo = "hfb.cli:main"
 hfb-export-slm = "hfb.cli:export_slm_main"
+hfb-symbolic = "hfb.cli:symbolic_main"
+hfb-bec-demo = "hfb.cli:bec_main"
+hfb-check = "hfb.cli:check_ecosystem_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["hfb"]

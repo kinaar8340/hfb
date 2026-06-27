@@ -19,7 +19,9 @@ from hfb.bec.acoustic import bec_acoustic_metric, bec_sound_speed
 from hfb.bec.bogoliubov import bogoliubov_dispersion
 from hfb.bec.gpe import thomas_fermi_density
 from hfb.bec.vortex import imprinted_vortex_phase, vortex_ring_velocity
-from hfb.integration.vqc_proto import vqc_proto_available
+from hfb.analog_gravity.symbolic import symbolic_summary
+from hfb.bec.demo import run_bec_acoustic_demo
+from hfb.integration.vqc_proto import resolve_vqc_root, vqc_proto_available, vqc_proto_status
 from hfb.optics.slm_export import (
     SLMExportConfig,
     VortexConduitSpec,
@@ -109,3 +111,26 @@ def test_field_to_slm_phase_range():
 
 def test_vqc_proto_availability_is_bool():
     assert isinstance(vqc_proto_available(), bool)
+
+
+def test_symbolic_summary_keys():
+    summary = symbolic_summary()
+    assert "horizon" in summary
+    assert "line_element" in summary
+
+
+def test_vqc_proto_status_dataclass():
+    status = vqc_proto_status()
+    assert hasattr(status, "lg_modes")
+    assert hasattr(status, "message")
+
+
+def test_resolve_vqc_root_finds_local_clone():
+    root = resolve_vqc_root()
+    if (Path.home() / "Projects" / "vqc_proto").exists():
+        assert root is not None
+
+
+def test_bec_acoustic_demo_writes(tmp_path: Path):
+    summary = run_bec_acoustic_demo(tmp_path, nx=32, extent=2.0, num_vortices=4)
+    assert Path(summary["output"]).is_file()

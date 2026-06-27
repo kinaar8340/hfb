@@ -11,8 +11,34 @@ from types import ModuleType
 from typing import Any, Callable
 
 
+def _candidate_vqc_roots() -> list[Path]:
+    """Search order for orbital_braille on disk."""
+    env = os.environ.get("VQC_PROTO_PATH")
+    home = Path.home()
+    return [
+        Path(env) if env else None,
+        home / "Projects" / "vqc_proto" / "space" / "orbital-braille",
+        home / "Projects" / "vqc_proto" / "proto",
+        home / "Projects" / "vqc_proto_full" / "space" / "orbital-braille",
+        home / "Projects" / "vqc_proto_full" / "proto",
+    ]  # type: ignore[list-item]
+
+
+def resolve_vqc_root(hint: Path | None = None) -> Path | None:
+    """Return first path containing orbital_braille/lg_modes.py."""
+    if hint is not None and vqc_proto_available(hint):
+        return hint
+    for root in _candidate_vqc_roots():
+        if root is not None and vqc_proto_available(root):
+            return root
+    return None
+
+
 def _default_vqc_path() -> Path:
-    return Path(os.environ.get("VQC_PROTO_PATH", Path.home() / "Projects/vqc_proto/space/orbital-braille"))
+    resolved = resolve_vqc_root()
+    if resolved is not None:
+        return resolved
+    return Path(os.environ.get("VQC_PROTO_PATH", Path.home() / "Projects" / "vqc_proto/space/orbital-braille"))
 
 
 def _load_module_from_file(name: str, path: Path, package: str = "orbital_braille") -> ModuleType | None:
@@ -49,6 +75,34 @@ def vqc_slm_available(path: Path | None = None) -> bool:
 
 
 @dataclass
+class VQCProtoStatus:
+    root: str | None
+    lg_modes: bool
+    slm_typehead: bool
+    message: str
+
+
+def vqc_proto_status() -> VQCProtoStatus:
+    """Diagnostic summary for CLI and notebooks."""
+    root = resolve_vqc_root()
+    if root is None:
+        return VQCProtoStatus(
+            root=None,
+            lg_modes=False,
+            slm_typehead=False,
+            message="vqc_proto not found — set VQC_PROTO_PATH or clone kinaar8340/vqc_proto",
+        )
+    lg = vqc_proto_available(root)
+    slm = vqc_slm_available(root)
+    return VQCProtoStatus(
+        root=str(root),
+        lg_modes=lg,
+        slm_typehead=slm,
+        message="full SLM coupling" if slm else "LG modes only (slm_typehead deps missing)",
+    )
+
+
+@dataclass
 class VQCProtoBridge:
     """Lazy loader for vqc_proto SLM export utilities."""
 
@@ -57,7 +111,7 @@ class VQCProtoBridge:
     _slm_mod: ModuleType | None = None
 
     def __post_init__(self) -> None:
-        self.root = self.root or _default_vqc_path()
+        self.root = resolve_vqc_root(self.root) or self.root or _default_vqc_path()
         if not vqc_proto_available(self.root):
             raise ImportError(
                 "vqc_proto orbital_braille not found. Set VQC_PROTO_PATH or install from "
