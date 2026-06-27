@@ -1,6 +1,11 @@
 # Hopf Flux Bubble (HFB)
 
+[![GitHub](https://img.shields.io/badge/GitHub-kinaar8340%2Fhfb-blue)](https://github.com/kinaar8340/hfb)
+[![Ecosystem](https://img.shields.io/badge/stack-vqc__proto-lightgrey)](https://github.com/kinaar8340/vqc_proto)
+
 **Analog effective geometries from topological defects, Hopf structures, and flow-engineered metrics.**
+
+Local path: `~/Projects/hfb/` · Remote: **https://github.com/kinaar8340/hfb** (repo exists — clone or pull to sync)
 
 Hopf Flux Bubble explores a creative synthesis: treating a "warp bubble" not as classical GR requiring exotic matter, but as an **emergent effective metric** engineered via topologically protected flux — linked Hopfions, vortex conduits, and defect-induced curvature in condensed-matter or metamaterial platforms.
 
@@ -8,7 +13,11 @@ Hopf Flux Bubble explores a creative synthesis: treating a "warp bubble" not as 
 
 ## Concept
 
-Cross-referencing analog gravity and topological defects literature:
+Cross-referencing analog gravity and topological defects literature.
+
+**Acoustic metric (analog gravity):** ds² = −(cₛ² − v²)dt² − 2**v**·d**x** dt + d**x**²
+
+**Defect curvature (conformal):** ΔΩ = −λ(r,θ)
 
 | Pillar | HFB module | Idea |
 |--------|------------|------|
@@ -47,6 +56,13 @@ jupyter notebook notebooks/       # interactive exploration
 ## Configuration
 
 Edit `configs/default.yaml` for grid size, bubble radius, vortex circulation, and sweep ranges.
+
+## Docs
+
+- [ECOSYSTEM.md](ECOSYSTEM.md) — kinaar8340 stack map
+- [GLOSSARY.md](GLOSSARY.md) — terms (Hopfion, acoustic metric, …)
+- [ROADMAP.md](ROADMAP.md) — v0.2–v0.4 plan
+- [docs/REFERENCES.md](docs/REFERENCES.md) — literature pointers
 
 ## Ecosystem
 
