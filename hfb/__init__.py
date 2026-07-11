@@ -4,6 +4,7 @@ from . import (
     analog_gravity,
     bec,
     bubble,
+    craft,
     defects,
     electro_vibrational,
     hopf,
@@ -12,12 +13,13 @@ from . import (
     utils,
 )
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 __all__ = [
     "analog_gravity",
     "bec",
     "bubble",
+    "craft",
     "defects",
     "electro_vibrational",
     "hopf",

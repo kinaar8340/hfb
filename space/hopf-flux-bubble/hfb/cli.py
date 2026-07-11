@@ -274,6 +274,7 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
             precharge_rate=tx_yaml.get("precharge_rate", 0.55),
             pretwist_rate=tx_yaml.get("pretwist_rate", 0.50),
             target_energy=tx_yaml.get("target_energy", 0.95),
+            ready_hysteresis=tx_yaml.get("ready_hysteresis", 0.04),
             axis=hemi.axis,
         ),
         store_duration=ev.get("store_duration", 2.0),
@@ -292,10 +293,13 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
     cycle = simulate_slingshot_cycle(x, y, t_max=t_max, dt=dt, cfg=slingshot)
     series = cycle["series"]
 
-    # Snapshots at store peak and release peak
+    # Snapshots at store peak and release peak (account for ready hold)
     t_store = float(slingshot.nucleate_duration + 0.6 * slingshot.store_duration)
     t_release = float(
-        slingshot.nucleate_duration + slingshot.store_duration + 0.4 * slingshot.release_duration
+        slingshot.nucleate_duration
+        + slingshot.store_duration
+        + slingshot.ready_duration
+        + 0.4 * slingshot.release_duration
     )
     stored_at = float(
         series["stored"][int(np.argmin(np.abs(series["t"] - t_store)))]
@@ -382,11 +386,101 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     print(f"Wrote {out_path}")
+
+    # Second figure: full cycle diagnostics (channel · pump · impulse)
+    fig2, axes2 = plt.subplots(3, 1, figsize=(11, 8), sharex=True)
+
+    ax = axes2[0]
+    if "channel_direction" in series:
+        ax.plot(series["t"], series["channel_direction"], label="channel dir (+1 store / −1 rev)", lw=1.6, color="C0")
+        ax.fill_between(
+            series["t"],
+            0.0,
+            series["channel_direction"],
+            where=np.asarray(series["channel_direction"]) >= 0,
+            alpha=0.15,
+            color="C0",
+        )
+        ax.fill_between(
+            series["t"],
+            0.0,
+            series["channel_direction"],
+            where=np.asarray(series["channel_direction"]) < 0,
+            alpha=0.15,
+            color="C3",
+        )
+    if "ready" in series:
+        ax.plot(series["t"], series["ready"], label="ready", lw=1.2, ls="--", color="C2")
+    ax.axhline(0.0, color="k", lw=0.6, alpha=0.4)
+    ax.set_ylabel("channel / ready")
+    ax.set_title("Flux channel polarity over the cycle")
+    ax.legend(fontsize=7, loc="upper right")
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(-1.3, 1.3)
+
+    ax = axes2[1]
+    if "precharge_power" in series:
+        ax.plot(series["t"], series["precharge_power"], label="pre-charge power", lw=1.4)
+        ax.plot(series["t"], series["pretwist_power"], label="pre-twist power", lw=1.4)
+    if "pump_active" in series:
+        ax.plot(series["t"], series["pump_active"], label="pump on", lw=1.0, ls=":", alpha=0.8)
+    ax.set_ylabel("pump power")
+    ax.set_title("Active motor path (pre-charge / pre-twist)")
+    ax.legend(fontsize=7, loc="upper right")
+    ax.grid(True, alpha=0.3)
+
+    ax = axes2[2]
+    ax.plot(series["t"], series["stored"], label="total stored", lw=1.5, color="k")
+    ax.plot(series["t"], series["impulse"], label="release impulse", lw=1.5, color="C3")
+    if "pumped_total" in series:
+        ax.plot(series["t"], series["pumped_total"], label="Σ pumped (motor)", lw=1.2, alpha=0.9)
+    if "passive_total" in series:
+        ax.plot(series["t"], series["passive_total"], label="Σ passive (gen)", lw=1.2, alpha=0.9)
+    if "pumped_efficiency" in series:
+        ax.plot(
+            series["t"],
+            series["pumped_efficiency"],
+            label="pumped efficiency (motor share)",
+            lw=1.2,
+            ls="--",
+            color="C4",
+        )
+    ax.set_xlabel("t")
+    ax.set_ylabel("energy / efficiency")
+    ax.set_title("Storage, dump impulse, motor vs passive fidelity")
+    ax.legend(fontsize=7, loc="upper right")
+    ax.grid(True, alpha=0.3)
+
+    # Phase boundary markers
+    t_n = slingshot.nucleate_duration
+    t_s = t_n + slingshot.store_duration
+    t_r = t_s + slingshot.ready_duration
+    t_rel = t_r + slingshot.release_duration
+    for ax in axes2:
+        for t_b, name in ((t_n, "store"), (t_s, "ready"), (t_r, "release"), (t_rel, "coast")):
+            ax.axvline(t_b, color="gray", lw=0.7, ls=":", alpha=0.7)
+
+    fig2.suptitle(
+        "HFB cycle diagnostics | nucleate → store → ready → release → coast",
+        fontsize=11,
+    )
+    fig2.tight_layout()
+    out_diag = output_dir / "hemi_void_slingshot_cycle.png"
+    fig2.savefig(out_diag, dpi=150)
+    plt.close(fig2)
+    print(f"Wrote {out_diag}")
+
     peak_es = float(series["e_electrostatic"].max()) if "e_electrostatic" in series else 0.0
     peak_tw = float(series["e_twist"].max()) if "e_twist" in series else 0.0
     peak_geo = float(series["e_geometric"].max()) if "e_geometric" in series else 0.0
     pumped = float(series["pumped_total"].max()) if "pumped_total" in series else 0.0
+    passive = float(series["passive_total"].max()) if "passive_total" in series else 0.0
+    peff = float(series["pumped_efficiency"].max()) if "pumped_efficiency" in series else 0.0
     ready_frac = float(series["ready"].mean()) if "ready" in series else 0.0
+    # Final breakdown from transducer if present
+    breakdown = None
+    if cycle.get("transducer") is not None:
+        breakdown = cycle["transducer"].get_storage_breakdown()
     print(
         f"max ψ={series['psi'].max():.3f}  max stored={series['stored'].max():.3f}  "
         f"max impulse={series['impulse'].max():.3f}"
@@ -394,7 +488,17 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
     print(
         f"ledger peaks  es={peak_es:.3f}  twist={peak_tw:.3f}  geometric={peak_geo:.3f}"
     )
-    print(f"active pump  Σ pumped={pumped:.3f}  ready duty={ready_frac:.2f}")
+    print(
+        f"fidelity  Σ pumped={pumped:.3f}  Σ passive={passive:.3f}  "
+        f"pumped_efficiency={peff:.3f}  ready duty={ready_frac:.2f}"
+    )
+    if breakdown is not None:
+        print(
+            f"breakdown  total={breakdown['total_stored']:.3f}  "
+            f"ES={breakdown['pct_electrostatic']:.1f}%  "
+            f"twist={breakdown['pct_twist']:.1f}%  "
+            f"geo={breakdown['pct_geometric']:.1f}%"
+        )
 
 
 def main() -> None:
@@ -409,10 +513,17 @@ def main() -> None:
         action="store_true",
         help="Hemi-void electro-vibrational slingshot demo",
     )
+    parser.add_argument(
+        "--mission",
+        action="store_true",
+        help="Transducer + craft/payload dynamics mission demo",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    if args.slingshot:
+    if args.mission:
+        run_mission_demo(cfg, args.output)
+    elif args.slingshot:
         run_slingshot_demo(cfg, args.output)
     elif args.compare_warp:
         run_compare_warp(cfg, args.output)
@@ -428,6 +539,177 @@ def slingshot_main() -> None:
     parser.add_argument("--output", type=Path, default=Path("outputs"))
     args = parser.parse_args()
     run_slingshot_demo(load_config(args.config), args.output)
+
+
+def run_mission_demo(cfg: dict, output_dir: Path) -> None:
+    """Transducer cycle + craft/payload trajectory integration demo."""
+    import matplotlib.pyplot as plt
+
+    from hfb.craft import CraftConfig, MissionConfig, simulate_mission
+    from hfb.electro_vibrational import (
+        DualChargeConfig,
+        ObserverSyncConfig,
+        PhaseAlignmentConfig,
+        SlingshotConfig,
+        TransducerConfig,
+    )
+
+    grid = cfg["grid"]
+    ev = cfg.get("electro_vibrational", {})
+    craft_yaml = cfg.get("craft", {})
+    hemi_cfg = cfg.get("hemi_void", {})
+
+    nx = min(int(grid.get("nx", 64)), 64)
+    extent = float(grid.get("extent", 4.0))
+    x, y = cartesian_grid(nx, nx, extent=extent)
+
+    axis = craft_yaml.get("axis", hemi_cfg.get("axis", "x"))
+    tx_yaml = ev.get("transducer", {})
+    slingshot = SlingshotConfig(
+        charge=DualChargeConfig(
+            inner_radius=ev.get("inner_radius", 0.85),
+            outer_radius=ev.get("outer_radius", 1.15),
+            charge_density=ev.get("charge_density", 1.0),
+            vibration_amp=ev.get("vibration_amp", 0.15),
+            elongation=hemi_cfg.get("elongation", 1.4),
+            axis=axis,
+        ),
+        phase=PhaseAlignmentConfig(
+            threshold=ev.get("phase_threshold", 0.72),
+            medium_resonance=ev.get("medium_resonance", 1.0),
+            drive_frequency=ev.get("drive_frequency", 1.0),
+        ),
+        observer=ObserverSyncConfig(
+            coupling=ev.get("observer_coupling", 0.4),
+            observer_frequency=ev.get("observer_frequency", 1.0),
+            hum_frequency=ev.get("hum_frequency", 1.0),
+        ),
+        transducer=TransducerConfig(
+            capacity=tx_yaml.get("capacity", 1.0),
+            enable_precharge=tx_yaml.get("enable_precharge", True),
+            enable_pretwist=tx_yaml.get("enable_pretwist", True),
+            precharge_rate=tx_yaml.get("precharge_rate", 0.55),
+            pretwist_rate=tx_yaml.get("pretwist_rate", 0.50),
+            target_energy=tx_yaml.get("target_energy", 0.95),
+            ready_hysteresis=tx_yaml.get("ready_hysteresis", 0.04),
+            pump_intensity=tx_yaml.get("pump_intensity", ev.get("pump_intensity", 1.0)),
+            intensity=tx_yaml.get("intensity", ev.get("release_intensity", 1.0)),
+            axis=axis,
+        ),
+        store_duration=ev.get("store_duration", 2.0),
+        ready_duration=ev.get("ready_duration", 0.4),
+        release_duration=ev.get("release_duration", 0.8),
+        nucleate_duration=ev.get("nucleate_duration", 1.0),
+        release_detuning=ev.get("release_detuning", 0.35),
+        enable_observer=ev.get("enable_observer", True),
+        use_transducer=ev.get("use_transducer", True),
+        release_intensity=ev.get("release_intensity", 1.0),
+        pump_intensity=ev.get("pump_intensity", 1.0),
+    )
+    craft_cfg = CraftConfig(
+        mass=craft_yaml.get("mass", 1.0),
+        axis=axis,
+        impulse_coupling=craft_yaml.get("impulse_coupling", 1.0),
+        store_recoil=craft_yaml.get("store_recoil", 0.04),
+        drag=craft_yaml.get("drag", 0.05),
+        twist_lateral=craft_yaml.get("twist_lateral", 0.12),
+        geometric_spring=craft_yaml.get("geometric_spring", 0.08),
+        es_boost=craft_yaml.get("es_boost", 0.10),
+        max_speed=craft_yaml.get("max_speed", 8.0),
+    )
+    mission = MissionConfig(
+        slingshot=slingshot,
+        craft=craft_cfg,
+        t_max=float(ev.get("t_max", 5.5)),
+        dt=float(ev.get("dt", 0.05)),
+        grid_nx=nx,
+        grid_extent=extent,
+    )
+    result = simulate_mission(x, y, cfg=mission)
+    series = result["series"]
+    craft = result["craft"]
+    final = result["final_craft"]
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+
+    ax = axes[0, 0]
+    ax.plot(craft["t"], craft["x"] if axis == "x" else craft["y"], label="position (axis)", lw=1.5)
+    ax.plot(craft["t"], craft["speed"], label="speed", lw=1.4)
+    ax.plot(series["t"], series["impulse"], label="directed impulse", lw=1.2, ls="--")
+    ax.set_xlabel("t")
+    ax.set_title("Craft kinematics")
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[0, 1]
+    ax.plot(craft["x"], craft["y"], lw=1.5, color="C0")
+    ax.scatter([craft["x"][0]], [craft["y"][0]], c="g", s=40, zorder=3, label="start")
+    ax.scatter([craft["x"][-1]], [craft["y"][-1]], c="r", s=40, zorder=3, label="end")
+    ax.set_aspect("equal")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title("Trajectory (lab frame)")
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[1, 0]
+    ax.plot(series["t"], series["stored"], label="ledger total", lw=1.4)
+    ax.plot(series["t"], series["impulse"], label="impulse", lw=1.2)
+    if "pumped_efficiency" in series:
+        ax.plot(series["t"], series["pumped_efficiency"], label="pumped eff.", lw=1.1, ls=":")
+    ax.set_xlabel("t")
+    ax.set_title("Transducer engine output")
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[1, 1]
+    ax.plot(craft["t"], craft["kinetic_energy"], label="craft KE", lw=1.5, color="C3")
+    ax.plot(craft["t"], craft["integrated_impulse"], label="∫ impulse", lw=1.3)
+    ax.plot(craft["t"], craft["vx"] if axis == "x" else craft["vy"], label="v_axis", lw=1.2)
+    ax.set_xlabel("t")
+    ax.set_title("Energy & integrated kick")
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+
+    # Phase markers
+    t_n = slingshot.nucleate_duration
+    t_s = t_n + slingshot.store_duration
+    t_r = t_s + slingshot.ready_duration
+    t_rel = t_r + slingshot.release_duration
+    for ax in (axes[0, 0], axes[1, 0], axes[1, 1]):
+        for t_b in (t_n, t_s, t_r, t_rel):
+            ax.axvline(t_b, color="gray", lw=0.7, ls=":", alpha=0.6)
+
+    fig.suptitle(
+        "HFB mission | transducer engine → craft/payload dynamics (analog)",
+        fontsize=11,
+    )
+    fig.tight_layout()
+    out = output_dir / "craft_mission.png"
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    print(f"Wrote {out}")
+    print(
+        f"final  x={final['x']:.4f}  y={final['y']:.4f}  "
+        f"speed={final['speed']:.4f}  KE={final['kinetic_energy']:.4f}  "
+        f"∫J={final['integrated_impulse']:.4f}"
+    )
+    if result.get("transducer") is not None:
+        bd = result["transducer"].get_storage_breakdown()
+        print(
+            f"engine  peak-store path  pumped_eff={bd.get('pumped_efficiency', 0):.3f}  "
+            f"(final ledger total={bd.get('total_stored', 0):.3f})"
+        )
+
+
+def mission_main() -> None:
+    parser = argparse.ArgumentParser(description="HFB craft mission demo")
+    parser.add_argument("--config", type=Path, default=Path("configs/default.yaml"))
+    parser.add_argument("--output", type=Path, default=Path("outputs"))
+    args = parser.parse_args()
+    run_mission_demo(load_config(args.config), args.output)
 
 
 def export_slm_main() -> None:

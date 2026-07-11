@@ -70,6 +70,8 @@ from .transducer import (
     transducer_shift_contribution,
 )
 
+# FluxTransducer.get_storage_breakdown / pumped_efficiency are methods on the class
+
 __all__ = [
     "DualChargeConfig",
     "PhaseAlignmentConfig",

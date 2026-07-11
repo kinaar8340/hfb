@@ -2,6 +2,26 @@
 
 Headline capabilities and how to run them.
 
+## 0b. Craft / payload mission (v0.3)
+
+**CLI:**
+```bash
+hfb-mission
+# → outputs/craft_mission.png
+```
+
+**API:**
+```python
+from hfb.craft import CraftConfig, MissionConfig, simulate_mission
+
+result = simulate_mission(cfg=MissionConfig(craft=CraftConfig(mass=1.0)))
+print(result["final_craft"]["speed"], result["craft"]["x"][-1])
+```
+
+Engine (transducer) stays decoupled; craft only consumes storage breakdown + directed impulse.
+
+---
+
 ## 0. Resonant electro-vibrational slingshot (v0.2)
 
 **Built-in** (core `numpy`/`scipy`).

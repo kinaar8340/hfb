@@ -428,6 +428,14 @@ def resonant_control_step(
         pumped_total=pumped_total,
     )
 
+    breakdown = None
+    passive_total = 0.0
+    pumped_efficiency = 0.0
+    if cfg.use_transducer and transducer is not None:
+        breakdown = transducer.get_storage_breakdown()
+        passive_total = float(transducer.total_passive.total)
+        pumped_efficiency = float(transducer.pumped_efficiency)
+
     out: dict = {
         "state": state,
         "alignment_field": align_field,
@@ -450,7 +458,9 @@ def resonant_control_step(
             "twist": e_tw,
             "geometric": e_geo,
             "total": stored,
+            "total_stored": stored,
         },
+        "storage_breakdown": breakdown,
         "channel_field": channel_field,
         "flow_intensity_field": flow_field,
         "channel_direction": ch_dir,
@@ -461,6 +471,8 @@ def resonant_control_step(
         "precharge_power": precharge_power,
         "pretwist_power": pretwist_power,
         "pumped_total": pumped_total,
+        "passive_total": passive_total,
+        "pumped_efficiency": pumped_efficiency,
         "pretwist_vx": pretwist_vx if cfg.use_transducer else None,
         "pretwist_vy": pretwist_vy if cfg.use_transducer else None,
     }
@@ -500,6 +512,8 @@ def simulate_slingshot_cycle(
         "precharge_power": [],
         "pretwist_power": [],
         "pumped_total": [],
+        "passive_total": [],
+        "pumped_efficiency": [],
     }
     stored = 0.0
     last = None
@@ -542,6 +556,8 @@ def simulate_slingshot_cycle(
         series["precharge_power"].append(st.precharge_power)
         series["pretwist_power"].append(st.pretwist_power)
         series["pumped_total"].append(st.pumped_total)
+        series["passive_total"].append(float(step.get("passive_total", 0.0)))
+        series["pumped_efficiency"].append(float(step.get("pumped_efficiency", 0.0)))
         last = step
 
     float_keys = (
@@ -562,6 +578,8 @@ def simulate_slingshot_cycle(
         "precharge_power",
         "pretwist_power",
         "pumped_total",
+        "passive_total",
+        "pumped_efficiency",
     )
     for key in float_keys:
         series[key] = np.asarray(series[key], dtype=float)

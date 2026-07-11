@@ -71,6 +71,8 @@ class TransducerConfig:
     """Pump throttle 0–1 (independent of release intensity when set)."""
     target_energy: float = 0.95
     """Fraction of capacity at which the rear hemi is 'ready'."""
+    ready_hysteresis: float = 0.04
+    """Band below target_energy before READY drops (prevents chatter)."""
     target_electrostatic: float | None = None
     """Optional absolute ES target; default = target_energy * capacity * w_es/wsum."""
     target_twist: float | None = None
@@ -102,12 +104,34 @@ class EnergyLedger:
     def total(self) -> float:
         return float(self.electrostatic + self.twist + self.geometric)
 
+    @property
+    def total_stored(self) -> float:
+        """Alias for ``total`` — craft-local stored energy."""
+        return self.total
+
+    def percentages(self) -> dict[str, float]:
+        """Channel fractions of total (0–100). Zero total → all zeros."""
+        tot = self.total
+        if tot <= 1e-15:
+            return {
+                "pct_electrostatic": 0.0,
+                "pct_twist": 0.0,
+                "pct_geometric": 0.0,
+            }
+        return {
+            "pct_electrostatic": 100.0 * self.electrostatic / tot,
+            "pct_twist": 100.0 * self.twist / tot,
+            "pct_geometric": 100.0 * self.geometric / tot,
+        }
+
     def as_dict(self) -> dict[str, float]:
         return {
             "electrostatic": float(self.electrostatic),
             "twist": float(self.twist),
             "geometric": float(self.geometric),
             "total": self.total,
+            "total_stored": self.total_stored,
+            **self.percentages(),
         }
 
     def clip_capacity(self, capacity: float) -> EnergyLedger:
@@ -289,14 +313,29 @@ def channel_targets(cfg: TransducerConfig | None = None) -> tuple[float, float, 
     return float(t_es), float(t_tw), float(t_geo)
 
 
-def is_ready(ledger: EnergyLedger, cfg: TransducerConfig | None = None) -> bool:
-    """True when ledger meets total (and soft per-channel) targets."""
+def is_ready(
+    ledger: EnergyLedger,
+    cfg: TransducerConfig | None = None,
+    was_ready: bool = False,
+) -> bool:
+    """True when ledger meets targets, with hysteresis to avoid READY chatter.
+
+    Enter READY when total ≥ target_energy · capacity (plus soft channel checks).
+    Leave READY only when total falls below (target_energy − hysteresis) · capacity.
+    """
     cfg = cfg or TransducerConfig()
-    if ledger.total + 1e-12 < cfg.target_energy * cfg.capacity:
+    high = cfg.target_energy * cfg.capacity
+    low = max(0.0, (cfg.target_energy - cfg.ready_hysteresis) * cfg.capacity)
+
+    if was_ready:
+        # Stay ready until we drop below the low band (ignore soft channels
+        # while holding — top-up handles small channel drift).
+        return ledger.total + 1e-12 >= low
+
+    if ledger.total + 1e-12 < high:
         return False
     t_es, t_tw, _ = channel_targets(cfg)
     # Soft: allow ~15% undershoot on individual channels once total is met
-    # (pump blend + passive collect rarely hit exact weight ratios).
     if ledger.electrostatic + 1e-12 < 0.85 * t_es:
         return False
     if ledger.twist + 1e-12 < 0.85 * t_tw:
@@ -374,11 +413,13 @@ def compute_pump_command(
     cfg: TransducerConfig | None = None,
     mode: str = "store",
     pump_intensity: float | None = None,
+    was_ready: bool = False,
 ) -> PumpCommand:
     """Compute active pre-charge / pre-twist drive for store or ready hold.
 
     Deficit-seeking controller: pumps harder when below channel targets,
-    tapers to zero at ready, and applies light top-up while holding READY.
+    tapers near ready (with hysteresis), and applies light top-up while
+    holding READY.
     """
     cfg = cfg or TransducerConfig()
     thr = cfg.pump_intensity if pump_intensity is None else float(
@@ -386,7 +427,7 @@ def compute_pump_command(
     )
     mode_l = mode.lower()
     t_es, t_tw, t_geo = channel_targets(cfg)
-    ready = is_ready(ledger, cfg)
+    ready = is_ready(ledger, cfg, was_ready=was_ready)
 
     lock_ok = (not cfg.pump_requires_lock) or (psi >= cfg.psi_pump_threshold)
     if mode_l not in ("store", "ready", "nucleate") or not lock_ok or thr <= 1e-12:
@@ -461,7 +502,10 @@ def apply_active_pump(
     dt: float,
     cfg: TransducerConfig | None = None,
 ) -> tuple[EnergyLedger, EnergyLedger]:
-    """Inject pre-charge / pre-twist energy into the ledger. Returns (new, pumped)."""
+    """Inject pre-charge / pre-twist energy into the ledger. Returns (new, pumped).
+
+    Pumped increment is capacity-clipped so Σ pumped matches banked motor energy.
+    """
     cfg = cfg or TransducerConfig()
     if not pump.pump_active:
         return ledger, EnergyLedger()
@@ -471,6 +515,11 @@ def apply_active_pump(
         twist=pump.pretwist_power * dt * eff,
         geometric=pump.geometric_power * dt * eff,
     )
+    room = max(0.0, cfg.capacity - ledger.total)
+    if pumped.total > room and pumped.total > 1e-15:
+        pumped = pumped.scale(room / pumped.total)
+    elif room <= 1e-15:
+        pumped = EnergyLedger()
     return ledger.add(pumped).clip_capacity(cfg.capacity), pumped
 
 
@@ -593,13 +642,23 @@ def accumulate_ledger(
     dt: float,
     cfg: TransducerConfig | None = None,
     open_channels: bool = True,
-) -> EnergyLedger:
-    """Bank passively sensed power into the ledger (generator path)."""
+) -> tuple[EnergyLedger, EnergyLedger]:
+    """Bank passively sensed power into the ledger (generator path).
+
+    Returns (new_ledger, passive_increment_actually_banked) for fidelity
+    accounting — increments are capacity-clipped so Σ passive reflects
+    what entered the ledger, not unbounded field integrals.
+    """
     cfg = cfg or TransducerConfig()
     if not open_channels:
-        return ledger.clip_capacity(cfg.capacity)
+        return ledger.clip_capacity(cfg.capacity), EnergyLedger()
     incr = reading.as_ledger_increment(dt, cfg.store_efficiency)
-    return ledger.add(incr).clip_capacity(cfg.capacity)
+    room = max(0.0, cfg.capacity - ledger.total)
+    if incr.total > room and incr.total > 1e-15:
+        incr = incr.scale(room / incr.total)
+    elif room <= 1e-15:
+        incr = EnergyLedger()
+    return ledger.add(incr).clip_capacity(cfg.capacity), incr
 
 
 def dump_ledger(
@@ -709,11 +768,17 @@ class FluxTransducer:
     cfg: TransducerConfig = field(default_factory=TransducerConfig)
     ledger: EnergyLedger = field(default_factory=EnergyLedger)
     total_pumped: EnergyLedger = field(default_factory=EnergyLedger)
-    """Cumulative actively injected energy (fidelity / accounting)."""
+    """Cumulative actively injected energy (motor path)."""
+    total_passive: EnergyLedger = field(default_factory=EnergyLedger)
+    """Cumulative passively collected energy (generator path)."""
+    _was_ready: bool = False
+    """Hysteresis latch for READY state."""
 
     def reset(self) -> None:
         self.ledger = EnergyLedger()
         self.total_pumped = EnergyLedger()
+        self.total_passive = EnergyLedger()
+        self._was_ready = False
 
     def set_intensity(self, intensity: float) -> None:
         self.cfg = replace(
@@ -742,6 +807,45 @@ class FluxTransducer:
             kw["target_twist"] = float(target_twist)
         if kw:
             self.cfg = replace(self.cfg, **kw)
+
+    @property
+    def total_stored(self) -> float:
+        return self.ledger.total_stored
+
+    @property
+    def pumped_efficiency(self) -> float:
+        """Motor share of cumulative intake: pumped / (pumped + passive).
+
+        1.0 → all energy actively injected; 0.0 → pure passive collection.
+        """
+        p = self.total_pumped.total
+        g = self.total_passive.total
+        den = p + g
+        if den <= 1e-15:
+            return 0.0
+        return float(p / den)
+
+    def get_storage_breakdown(self) -> dict[str, float | bool]:
+        """Diagnostic snapshot: channel %, totals, motor vs passive fidelity."""
+        pct = self.ledger.percentages()
+        cap = max(self.cfg.capacity, 1e-12)
+        ready = is_ready(self.ledger, self.cfg, was_ready=self._was_ready)
+        return {
+            "total_stored": self.ledger.total_stored,
+            "electrostatic": float(self.ledger.electrostatic),
+            "twist": float(self.ledger.twist),
+            "geometric": float(self.ledger.geometric),
+            **pct,
+            "capacity": float(self.cfg.capacity),
+            "capacity_fraction": float(self.ledger.total / cap),
+            "target_energy": float(self.cfg.target_energy),
+            "ready": bool(ready),
+            "total_pumped": float(self.total_pumped.total),
+            "total_passive": float(self.total_passive.total),
+            "pumped_efficiency": self.pumped_efficiency,
+            "motor_fraction": self.pumped_efficiency,
+            "passive_fraction": float(1.0 - self.pumped_efficiency),
+        }
 
     def step(
         self,
@@ -775,7 +879,9 @@ class FluxTransducer:
         p_thr = self.cfg.pump_intensity if pump_intensity is None else float(
             np.clip(pump_intensity, 0.0, self.cfg.max_intensity)
         )
-        channels = channel_direction_for_mode(mode, intensity=thr if mode.lower() == "release" else p_thr)
+        channels = channel_direction_for_mode(
+            mode, intensity=thr if mode.lower() == "release" else p_thr
+        )
         reading = sense_energy_channels(
             x,
             y,
@@ -793,45 +899,72 @@ class FluxTransducer:
         pumped = EnergyLedger()
         mode_l = mode.lower()
         pump = compute_pump_command(
-            self.ledger, psi, self.cfg, mode=mode_l, pump_intensity=p_thr
+            self.ledger,
+            psi,
+            self.cfg,
+            mode=mode_l,
+            pump_intensity=p_thr,
+            was_ready=self._was_ready,
         )
 
         if mode_l == "store":
             # Passive collection (generator) + active pre-charge / pre-twist (motor)
-            self.ledger = accumulate_ledger(
+            self.ledger, passive_incr = accumulate_ledger(
                 self.ledger, reading, dt, self.cfg, open_channels=True
             )
+            self.total_passive = self.total_passive.add(passive_incr)
             self.ledger, pumped = apply_active_pump(self.ledger, pump, dt, self.cfg)
             self.total_pumped = self.total_pumped.add(pumped).clip_capacity(
                 self.cfg.capacity * 4.0
             )
-            # Recompute pump readiness after inject
-            pump = replace(pump, ready=is_ready(self.ledger, self.cfg))
+            ready_now = is_ready(self.ledger, self.cfg, was_ready=self._was_ready)
+            self._was_ready = ready_now
+            pump = replace(pump, ready=ready_now)
         elif mode_l == "ready":
             self.ledger = coast_leak(
                 self.ledger, dt, self.cfg, rate=self.cfg.ready_hold_leak
             )
-            # Top-up to hold target
             pump = compute_pump_command(
-                self.ledger, psi, self.cfg, mode="ready", pump_intensity=p_thr
+                self.ledger,
+                psi,
+                self.cfg,
+                mode="ready",
+                pump_intensity=p_thr,
+                was_ready=self._was_ready,
             )
             self.ledger, pumped = apply_active_pump(self.ledger, pump, dt, self.cfg)
             self.total_pumped = self.total_pumped.add(pumped)
-            pump = replace(pump, ready=is_ready(self.ledger, self.cfg))
+            ready_now = is_ready(self.ledger, self.cfg, was_ready=True)
+            self._was_ready = ready_now
+            pump = replace(pump, ready=ready_now)
         elif mode_l == "nucleate":
             primed = reading.as_ledger_increment(dt, self.cfg.store_efficiency * 0.35)
             self.ledger = self.ledger.add(primed).clip_capacity(self.cfg.capacity)
+            self.total_passive = self.total_passive.add(primed)
             self.ledger, pumped = apply_active_pump(self.ledger, pump, dt, self.cfg)
             self.total_pumped = self.total_pumped.add(pumped)
+            self._was_ready = is_ready(
+                self.ledger, self.cfg, was_ready=self._was_ready
+            )
         elif mode_l == "release":
-            # Kill pump; dump via reverted channels
-            pump = PumpCommand(ready=is_ready(self.ledger, self.cfg), pump_active=False)
+            pump = PumpCommand(
+                ready=is_ready(self.ledger, self.cfg, was_ready=self._was_ready),
+                pump_active=False,
+            )
             self.ledger, dump, directed = dump_ledger(
                 self.ledger, dt, self.cfg, intensity=thr
             )
+            # Release drains the latch once energy drops out of the low band
+            self._was_ready = is_ready(self.ledger, self.cfg, was_ready=self._was_ready)
         else:
-            pump = PumpCommand(ready=is_ready(self.ledger, self.cfg), pump_active=False)
+            pump = PumpCommand(
+                ready=is_ready(self.ledger, self.cfg, was_ready=self._was_ready),
+                pump_active=False,
+            )
             self.ledger = coast_leak(self.ledger, dt, self.cfg)
+            self._was_ready = is_ready(
+                self.ledger, self.cfg, was_ready=self._was_ready
+            )
 
         ch_field = flux_channel_polarity_field(x, y, channels, self.cfg)
         flow_field = flow_intensity_field(x, y, channels, self.cfg)

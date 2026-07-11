@@ -346,6 +346,57 @@ def test_active_precharge_and_pretwist_pump():
     assert np.max(np.abs(vx)) > 0.0 or np.max(np.abs(vy)) > 0.0
 
 
+def test_storage_breakdown_and_efficiency():
+    from hfb.electro_vibrational import FluxTransducer, TransducerConfig, EnergyLedger
+    from hfb.electro_vibrational.charge_envelopes import capacitive_field_magnitude
+
+    x, y = cartesian_grid(32, 32, extent=2.5)
+    dx = float(x[0, 1] - x[0, 0])
+    e = capacitive_field_magnitude(x, y)
+    sigma = opposing_charge_density(x, y)
+    void = np.exp(-(x**2 + y**2) / 2.0)
+    tx = FluxTransducer(
+        cfg=TransducerConfig(
+            capacity=1.0,
+            enable_precharge=True,
+            enable_pretwist=True,
+            precharge_rate=0.7,
+            pretwist_rate=0.6,
+            target_energy=0.9,
+        )
+    )
+    for _ in range(20):
+        tx.step(
+            x, y, mode="store", e_field=e, charge_density=sigma,
+            void_amplitude_field=void, psi=0.95, dt=0.1, dx=dx,
+        )
+    bd = tx.get_storage_breakdown()
+    assert bd["total_stored"] > 0.0
+    assert "pct_electrostatic" in bd
+    assert abs(bd["pct_electrostatic"] + bd["pct_twist"] + bd["pct_geometric"] - 100.0) < 1e-6 or bd["total_stored"] < 1e-12
+    assert 0.0 <= bd["pumped_efficiency"] <= 1.0
+    assert bd["total_pumped"] >= 0.0
+    assert bd["total_passive"] >= 0.0
+    assert tx.total_stored == pytest.approx(bd["total_stored"])
+
+
+def test_ready_hysteresis_band():
+    from hfb.electro_vibrational import EnergyLedger, TransducerConfig, is_ready
+
+    cfg = TransducerConfig(capacity=1.0, target_energy=0.90, ready_hysteresis=0.05)
+    # Below high threshold → not ready
+    assert not is_ready(EnergyLedger(electrostatic=0.4, twist=0.3, geometric=0.15), cfg)
+    # At target with soft channel balance
+    high = EnergyLedger(electrostatic=0.40, twist=0.32, geometric=0.20)  # total 0.92
+    assert is_ready(high, cfg, was_ready=False)
+    # Drop slightly below high but above low (0.85) while latched → stay ready
+    mid = EnergyLedger(electrostatic=0.38, twist=0.30, geometric=0.18)  # total 0.86
+    assert is_ready(mid, cfg, was_ready=True)
+    # Below low band → drop out
+    low = EnergyLedger(electrostatic=0.30, twist=0.25, geometric=0.15)  # total 0.70
+    assert not is_ready(low, cfg, was_ready=True)
+
+
 def test_simulate_cycle_pumps_then_ready_then_release():
     x, y = cartesian_grid(32, 32, extent=2.5)
     cfg = SlingshotConfig(

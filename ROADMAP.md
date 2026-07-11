@@ -29,7 +29,7 @@
 | Defect modulation by channel polarity field | `modulate_defect_by_channels` |
 | Demo plots ledger channels + channel direction | `hfb-slingshot` |
 
-## v0.2.2 ✅ (current) — Active pre-charge / pre-twist
+## v0.2.2 ✅ — Active pre-charge / pre-twist
 
 | Task | Module |
 |------|--------|
@@ -39,13 +39,29 @@
 | Σ pumped fidelity accounting | `FluxTransducer.total_pumped` |
 | Independent pump vs release throttles | `pump_intensity` / `release_intensity` |
 
-## v0.3 — Simulation depth
+## v0.2.3 ✅ — Transducer diagnostics
+
+| Task | Module |
+|------|--------|
+| `get_storage_breakdown`, pumped_efficiency | `transducer.py` |
+| READY hysteresis | `ready_hysteresis` |
+| Cycle diagnostic figure | `hfb-slingshot` |
+
+## v0.3.0 ✅ (current) — Craft dynamics
+
+| Task | Module |
+|------|--------|
+| Craft/payload EOM from impulse + breakdown | `craft/dynamics.py` |
+| Mission coupling engine ↔ craft | `craft/mission.py` |
+| CLI mission demo | `hfb-mission` |
+
+## v0.3.x — Simulation depth
 
 | Task | Module |
 |------|--------|
 | 3D Hopfion texture volume + isosurfaces | `hopf/hopfion.py` |
 | Full acoustic horizon finder (draining vortex) | `analog_gravity/acoustic.py` |
-| Closed-loop PID on ψ, ledger channels, pump/release intensity | `electro_vibrational/` |
+| Closed-loop PID on ψ, ledger, craft speed error | `electro_vibrational/` + `craft/` |
 | Multi-transducer array / distributed channels | `transducer.py` |
 | Parameter sweep → Fisher-Rao landscape export | `integration/` + `string_optimizer` |
 | Negative effective pressure proxy in defect cores | `defects/` |

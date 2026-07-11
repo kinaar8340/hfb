@@ -34,3 +34,11 @@
 | **Pump intensity** | 0–1 throttle for pre-charge / pre-twist drive (independent of release intensity) |
 | **Ready state** | Rear hemi at target ledger energy; channels hold/top-up until release command |
 | **Σ pumped** | Cumulative actively injected energy (motor path) — fidelity metric vs passive collection |
+| **Σ passive** | Cumulative ambient-collected energy (generator path) |
+| **Pumped efficiency** | Motor share of intake: Σ pumped / (Σ pumped + Σ passive) |
+| **READY hysteresis** | Band below target_energy before READY drops — prevents pump chatter |
+| **Storage breakdown** | Diagnostic: channel %, total_stored, capacity fraction, motor vs passive |
+| **Craft dynamics** | Payload / hull equations of motion driven by transducer impulse + ledger (not global GR) |
+| **Directed Δv** | Axial velocity kick: coupling · J / m, with optional ES-channel boost at dump |
+| **Store recoil** | Small rearward reaction while actively loading the rear hemi |
+| **Mission** | Coupled engine cycle + craft integration (`simulate_mission`) |

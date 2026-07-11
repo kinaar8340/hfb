@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hopf-flux-bubble"
-version = "0.2.2"
-description = "Analog gravity, topological defects, Hopf structures, and resonant electro-vibrational control for effective warp-bubble geometries"
+version = "0.3.0"
+description = "Analog gravity, Hopf flux bubbles, electro-vibrational transducer control, and craft/payload dynamics"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -40,6 +40,7 @@ hfb-symbolic = "hfb.cli:symbolic_main"
 hfb-bec-demo = "hfb.cli:bec_main"
 hfb-check = "hfb.cli:check_ecosystem_main"
 hfb-slingshot = "hfb.cli:slingshot_main"
+hfb-mission = "hfb.cli:mission_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["hfb"]

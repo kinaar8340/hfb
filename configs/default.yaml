@@ -62,6 +62,19 @@ electro_vibrational:
     precharge_rate: 0.55
     pretwist_rate: 0.50
     target_energy: 0.95
+    ready_hysteresis: 0.04
+
+# Craft / payload dynamics (integrates transducer directed impulse)
+craft:
+  mass: 1.0
+  axis: x
+  impulse_coupling: 1.0
+  store_recoil: 0.04
+  drag: 0.05
+  twist_lateral: 0.12
+  geometric_spring: 0.08
+  es_boost: 0.10
+  max_speed: 8.0
 
 warp_compare:
   vs: 0.3

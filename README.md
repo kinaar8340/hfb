@@ -32,7 +32,33 @@ Cross-referencing analog gravity and topological defects literature.
 
 Broader framing: [concept thread on X](https://x.com/kinaar8340/status/2070662842496491671)
 
-## What's new in v0.2.2 — Active pre-charge / pre-twist
+## What's new in v0.3.0 — Craft / payload dynamics
+
+Higher layer above the transducer engine:
+
+- `hfb/craft/` — rigid-body / payload integration of directed impulse + storage breakdown
+- `simulate_mission()` — full nucleate→store→ready→release→coast + craft trajectory
+- CLI: `hfb-mission` → `outputs/craft_mission.png`
+
+```python
+from hfb.craft import CraftConfig, MissionConfig, simulate_mission
+
+result = simulate_mission(cfg=MissionConfig(
+    craft=CraftConfig(mass=1.0, impulse_coupling=1.0),
+))
+print(result["final_craft"])  # x, y, speed, KE, ∫impulse
+```
+
+Transducer stays the local engine; craft dynamics only consumes `get_storage_breakdown()` + directed impulse.
+
+### v0.2.3 — Transducer diagnostics polish
+
+- `get_storage_breakdown()` — channel %, `total_stored`, motor vs passive
+- `pumped_efficiency` = Σ pumped / (Σ pumped + Σ passive)
+- READY **hysteresis** band (`ready_hysteresis`) to stop chatter near target
+- Second demo figure: `outputs/hemi_void_slingshot_cycle.png` (channel · pump · impulse)
+
+### v0.2.2 — Active pre-charge / pre-twist
 
 The flux transducer is now a full **bidirectional controller** (motor–generator + gearbox):
 
