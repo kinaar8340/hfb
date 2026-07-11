@@ -41,9 +41,36 @@ rsync -av --delete \
   --exclude='.venv' \
   --exclude='__pycache__' \
   --exclude='*.pyc' \
+  --exclude='.pytest_cache' \
   "$ROOT/space/hopf-flux-bubble/" "$HF_DIR/"
 cd "$HF_DIR"
+
+# HF rejects binary .pyc pushes — never track bytecode
+find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+find . -name '*.pyc' -delete 2>/dev/null || true
+cat > .gitignore <<'EOF'
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+EOF
+# Drop any previously tracked bytecode from the index
+if git ls-files | grep -qE '__pycache__|\.pyc$'; then
+  git ls-files | grep -E '__pycache__|\.pyc$' | xargs -r git rm -f
+fi
+
 git add -A
+# Refuse to stage newly added binaries
+if git diff --cached --diff-filter=A --name-only | grep -qE '__pycache__|\.pyc$'; then
+  echo "ERROR: refusing to commit .pyc / __pycache__ to HF Space"
+  git diff --cached --diff-filter=A --name-only | grep -E '__pycache__|\.pyc$' || true
+  exit 1
+fi
 git status --short
 if git diff --cached --quiet; then
   echo "No HF changes to commit"
