@@ -541,11 +541,17 @@ def slingshot_main() -> None:
     run_slingshot_demo(load_config(args.config), args.output)
 
 
-def run_mission_demo(cfg: dict, output_dir: Path) -> None:
+def run_mission_demo(cfg: dict, output_dir: Path, *, coupled: bool = False) -> None:
     """Transducer cycle + craft/payload trajectory integration demo."""
     import matplotlib.pyplot as plt
 
-    from hfb.craft import CraftConfig, MissionConfig, simulate_mission
+    from hfb.craft import (
+        CraftConfig,
+        MissionConfig,
+        format_energy_flow_summary,
+        simulate_mission,
+        simulate_mission_coupled,
+    )
     from hfb.electro_vibrational import (
         DualChargeConfig,
         ObserverSyncConfig,
@@ -558,6 +564,7 @@ def run_mission_demo(cfg: dict, output_dir: Path) -> None:
     ev = cfg.get("electro_vibrational", {})
     craft_yaml = cfg.get("craft", {})
     hemi_cfg = cfg.get("hemi_void", {})
+    fb_yaml = craft_yaml.get("feedback", {})
 
     nx = min(int(grid.get("nx", 64)), 64)
     extent = float(grid.get("extent", 4.0))
@@ -617,6 +624,9 @@ def run_mission_demo(cfg: dict, output_dir: Path) -> None:
         es_boost=craft_yaml.get("es_boost", 0.10),
         max_speed=craft_yaml.get("max_speed", 8.0),
     )
+    use_coupled = coupled or bool(craft_yaml.get("coupled", False)) or bool(
+        fb_yaml.get("enable", False)
+    )
     mission = MissionConfig(
         slingshot=slingshot,
         craft=craft_cfg,
@@ -624,56 +634,85 @@ def run_mission_demo(cfg: dict, output_dir: Path) -> None:
         dt=float(ev.get("dt", 0.05)),
         grid_nx=nx,
         grid_extent=extent,
+        enable_craft_feedback=bool(fb_yaml.get("enable", use_coupled and craft_yaml.get("feedback_enable", False)))
+        or bool(craft_yaml.get("enable_craft_feedback", False)),
+        feedback_target_speed=float(fb_yaml.get("target_speed", craft_yaml.get("feedback_target_speed", 0.8))),
+        feedback_target_position=float(
+            fb_yaml.get("target_position", craft_yaml.get("feedback_target_position", 1.0))
+        ),
+        feedback_pump_gain=float(fb_yaml.get("pump_gain", 0.35)),
+        feedback_release_gain=float(fb_yaml.get("release_gain", 0.35)),
+        feedback_position_gain=float(fb_yaml.get("position_gain", 0.15)),
+        feedback_max_boost=float(fb_yaml.get("max_boost", 0.40)),
     )
-    result = simulate_mission(x, y, cfg=mission)
+    if use_coupled:
+        result = simulate_mission_coupled(x, y, cfg=mission)
+    else:
+        result = simulate_mission(x, y, cfg=mission)
     series = result["series"]
     craft = result["craft"]
     final = result["final_craft"]
+    energy = result.get("energy_flow", {})
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+    # Main figure: causal chain — ledger channels + impulse | trajectory
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8.5))
 
     ax = axes[0, 0]
-    ax.plot(craft["t"], craft["x"] if axis == "x" else craft["y"], label="position (axis)", lw=1.5)
-    ax.plot(craft["t"], craft["speed"], label="speed", lw=1.4)
-    ax.plot(series["t"], series["impulse"], label="directed impulse", lw=1.2, ls="--")
-    ax.set_xlabel("t")
-    ax.set_title("Craft kinematics")
-    ax.legend(fontsize=7)
+    if "e_electrostatic" in series:
+        ax.plot(series["t"], series["e_electrostatic"], label="ES", lw=1.3)
+        ax.plot(series["t"], series["e_twist"], label="twist", lw=1.3)
+        ax.plot(series["t"], series["e_geometric"], label="geometric", lw=1.3)
+    ax.plot(series["t"], series["stored"], label="ledger total", lw=1.6, color="k")
+    ax.plot(series["t"], series["impulse"], label="directed impulse", lw=1.4, ls="--", color="C3")
+    ax.set_ylabel("energy / impulse")
+    ax.set_title("Transducer ledger channels + impulse (engine)")
+    ax.legend(fontsize=6.5, loc="upper right")
     ax.grid(True, alpha=0.3)
 
     ax = axes[0, 1]
-    ax.plot(craft["x"], craft["y"], lw=1.5, color="C0")
-    ax.scatter([craft["x"][0]], [craft["y"][0]], c="g", s=40, zorder=3, label="start")
-    ax.scatter([craft["x"][-1]], [craft["y"][-1]], c="r", s=40, zorder=3, label="end")
+    ax.plot(craft["x"], craft["y"], lw=1.6, color="C0")
+    ax.scatter([craft["x"][0]], [craft["y"][0]], c="g", s=45, zorder=3, label="start")
+    ax.scatter([craft["x"][-1]], [craft["y"][-1]], c="r", s=45, zorder=3, label="end")
+    # Color trajectory by impulse epochs if available
     ax.set_aspect("equal")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
-    ax.set_title("Trajectory (lab frame)")
+    ax.set_title("Craft trajectory (lab frame)")
     ax.legend(fontsize=7)
     ax.grid(True, alpha=0.3)
 
     ax = axes[1, 0]
-    ax.plot(series["t"], series["stored"], label="ledger total", lw=1.4)
-    ax.plot(series["t"], series["impulse"], label="impulse", lw=1.2)
-    if "pumped_efficiency" in series:
-        ax.plot(series["t"], series["pumped_efficiency"], label="pumped eff.", lw=1.1, ls=":")
+    ax.plot(craft["t"], craft["x"] if axis == "x" else craft["y"], label="position (axis)", lw=1.5)
+    ax.plot(craft["t"], craft["speed"], label="speed", lw=1.4)
+    ax.plot(craft["t"], craft["kinetic_energy"], label="KE", lw=1.3, color="C3")
+    ax.plot(series["t"], series["impulse"], label="impulse", lw=1.2, ls="--")
     ax.set_xlabel("t")
-    ax.set_title("Transducer engine output")
-    ax.legend(fontsize=7)
+    ax.set_title("Craft kinematics (response to impulse)")
+    ax.legend(fontsize=6.5)
     ax.grid(True, alpha=0.3)
 
     ax = axes[1, 1]
-    ax.plot(craft["t"], craft["kinetic_energy"], label="craft KE", lw=1.5, color="C3")
-    ax.plot(craft["t"], craft["integrated_impulse"], label="∫ impulse", lw=1.3)
-    ax.plot(craft["t"], craft["vx"] if axis == "x" else craft["vy"], label="v_axis", lw=1.2)
+    ax.plot(craft["t"], craft["integrated_impulse"], label="∫ impulse → craft", lw=1.5)
+    ax.plot(craft["t"], craft["kinetic_energy"], label="craft KE", lw=1.4, color="C3")
+    if "pumped_total" in series:
+        ax.plot(series["t"], series["pumped_total"], label="Σ pumped", lw=1.2, alpha=0.9)
+    if "passive_total" in series:
+        ax.plot(series["t"], series["passive_total"], label="Σ passive", lw=1.2, alpha=0.9)
+    if energy:
+        ax.axhline(
+            energy.get("efficiency_ke_over_pumped", 0.0),
+            color="C4",
+            ls=":",
+            lw=1.2,
+            label=f"KE/pumped={energy.get('efficiency_ke_over_pumped', 0):.3f}",
+        )
     ax.set_xlabel("t")
-    ax.set_title("Energy & integrated kick")
-    ax.legend(fontsize=7)
+    ax.set_title("Energy flow: engine intake → craft KE")
+    ax.legend(fontsize=6.5)
     ax.grid(True, alpha=0.3)
 
-    # Phase markers
     t_n = slingshot.nucleate_duration
     t_s = t_n + slingshot.store_duration
     t_r = t_s + slingshot.ready_duration
@@ -682,8 +721,9 @@ def run_mission_demo(cfg: dict, output_dir: Path) -> None:
         for t_b in (t_n, t_s, t_r, t_rel):
             ax.axvline(t_b, color="gray", lw=0.7, ls=":", alpha=0.6)
 
+    mode = "coupled feedback" if result.get("coupled") else "open-loop"
     fig.suptitle(
-        "HFB mission | transducer engine → craft/payload dynamics (analog)",
+        f"HFB mission | engine ledger → craft trajectory ({mode})",
         fontsize=11,
     )
     fig.tight_layout()
@@ -691,25 +731,98 @@ def run_mission_demo(cfg: dict, output_dir: Path) -> None:
     fig.savefig(out, dpi=150)
     plt.close(fig)
     print(f"Wrote {out}")
+
+    # Causal-chain companion figure: stacked ledger | impulse | trajectory x(t)
+    fig2, axes2 = plt.subplots(3, 1, figsize=(11, 8), sharex=False)
+    ax = axes2[0]
+    if "e_electrostatic" in series:
+        ax.stackplot(
+            series["t"],
+            series["e_electrostatic"],
+            series["e_twist"],
+            series["e_geometric"],
+            labels=["ES", "twist", "geometric"],
+            alpha=0.75,
+        )
+    ax.plot(series["t"], series["stored"], color="k", lw=1.2, label="total")
+    ax.set_ylabel("ledger")
+    ax.set_title("1 · Transducer channel store")
+    ax.legend(fontsize=7, loc="upper right")
+    ax.grid(True, alpha=0.3)
+
+    ax = axes2[1]
+    ax.plot(series["t"], series["impulse"], color="C3", lw=1.6, label="directed impulse")
+    ax.fill_between(series["t"], 0.0, series["impulse"], alpha=0.25, color="C3")
+    if "channel_direction" in series:
+        ax.plot(
+            series["t"],
+            series["channel_direction"],
+            color="C0",
+            lw=1.2,
+            label="channel dir",
+            alpha=0.85,
+        )
+    ax.set_ylabel("impulse / dir")
+    ax.set_title("2 · Channel reversion + metered dump")
+    ax.legend(fontsize=7, loc="upper right")
+    ax.grid(True, alpha=0.3)
+
+    ax = axes2[2]
+    ax.plot(craft["t"], craft["x"] if axis == "x" else craft["y"], lw=1.6, label="craft position")
+    ax.plot(craft["t"], craft["speed"], lw=1.3, label="speed")
+    ax.plot(craft["t"], craft["kinetic_energy"], lw=1.3, label="KE", color="C3")
+    ax.set_xlabel("t")
+    ax.set_ylabel("craft")
+    ax.set_title("3 · Craft response (trajectory / speed / KE)")
+    ax.legend(fontsize=7, loc="upper right")
+    ax.grid(True, alpha=0.3)
+
+    for ax in axes2:
+        for t_b in (t_n, t_s, t_r, t_rel):
+            ax.axvline(t_b, color="gray", lw=0.7, ls=":", alpha=0.6)
+
+    fig2.suptitle(
+        "Causal chain | store channels → impulse dump → craft motion",
+        fontsize=11,
+    )
+    fig2.tight_layout()
+    out2 = output_dir / "craft_mission_chain.png"
+    fig2.savefig(out2, dpi=150)
+    plt.close(fig2)
+    print(f"Wrote {out2}")
+
     print(
         f"final  x={final['x']:.4f}  y={final['y']:.4f}  "
         f"speed={final['speed']:.4f}  KE={final['kinetic_energy']:.4f}  "
         f"∫J={final['integrated_impulse']:.4f}"
     )
-    if result.get("transducer") is not None:
-        bd = result["transducer"].get_storage_breakdown()
-        print(
-            f"engine  peak-store path  pumped_eff={bd.get('pumped_efficiency', 0):.3f}  "
-            f"(final ledger total={bd.get('total_stored', 0):.3f})"
-        )
+    if result.get("energy_flow_text"):
+        print(result["energy_flow_text"])
+    elif energy:
+        print(format_energy_flow_summary(energy))
 
 
 def mission_main() -> None:
     parser = argparse.ArgumentParser(description="HFB craft mission demo")
     parser.add_argument("--config", type=Path, default=Path("configs/default.yaml"))
     parser.add_argument("--output", type=Path, default=Path("outputs"))
+    parser.add_argument(
+        "--coupled",
+        action="store_true",
+        help="Use simulate_mission_coupled (optional craft→throttle feedback)",
+    )
+    parser.add_argument(
+        "--feedback",
+        action="store_true",
+        help="Enable craft speed/position throttle feedback (implies --coupled)",
+    )
     args = parser.parse_args()
-    run_mission_demo(load_config(args.config), args.output)
+    cfg = load_config(args.config)
+    if args.feedback:
+        cfg.setdefault("craft", {})["enable_craft_feedback"] = True
+        cfg.setdefault("craft", {}).setdefault("feedback", {})["enable"] = True
+        args.coupled = True
+    run_mission_demo(cfg, args.output, coupled=args.coupled)
 
 
 def export_slm_main() -> None:

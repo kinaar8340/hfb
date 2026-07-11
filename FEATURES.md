@@ -7,18 +7,29 @@ Headline capabilities and how to run them.
 **CLI:**
 ```bash
 hfb-mission
-# → outputs/craft_mission.png
+# → outputs/craft_mission.png, craft_mission_chain.png
+hfb-mission --coupled --feedback   # craft speed/position → throttle bias
 ```
 
 **API:**
 ```python
-from hfb.craft import CraftConfig, MissionConfig, simulate_mission
+from hfb.craft import CraftConfig, MissionConfig, simulate_mission, energy_flow_summary
 
 result = simulate_mission(cfg=MissionConfig(craft=CraftConfig(mass=1.0)))
 print(result["final_craft"]["speed"], result["craft"]["x"][-1])
+print(result["energy_flow_text"])  # pumped, impulse, KE, efficiency
 ```
 
-Engine (transducer) stays decoupled; craft only consumes storage breakdown + directed impulse.
+**Coupled feedback** (optional):
+```python
+result = simulate_mission_coupled(x, y, cfg=MissionConfig(
+    enable_craft_feedback=True,
+    feedback_target_speed=0.8,
+    feedback_pump_gain=0.35,
+))
+```
+
+Engine (transducer) stays decoupled; craft only consumes storage breakdown + directed impulse (and optionally biases throttles).
 
 ---
 

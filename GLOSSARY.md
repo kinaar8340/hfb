@@ -42,3 +42,5 @@
 | **Directed Δv** | Axial velocity kick: coupling · J / m, with optional ES-channel boost at dump |
 | **Store recoil** | Small rearward reaction while actively loading the rear hemi |
 | **Mission** | Coupled engine cycle + craft integration (`simulate_mission`) |
+| **Energy flow summary** | total_pumped, net_impulse, final_KE, efficiency KE/pumped (and KE/intake) |
+| **Craft→throttle feedback** | Optional loop: craft speed/position error multiplies pump/release intensity |

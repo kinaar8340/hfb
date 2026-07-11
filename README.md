@@ -32,7 +32,21 @@ Cross-referencing analog gravity and topological defects literature.
 
 Broader framing: [concept thread on X](https://x.com/kinaar8340/status/2070662842496491671)
 
-## What's new in v0.3.0 — Craft / payload dynamics
+## What's new in v0.3.1 — Mission energy flow + craft→throttle feedback
+
+- `energy_flow_summary()` — total pumped, net impulse, final KE, KE/pumped efficiency
+- Demo: `craft_mission.png` + `craft_mission_chain.png` (ledger → impulse → trajectory)
+- Coupled feedback: craft speed/position gently biases pump/release throttles
+- CLI: `hfb-mission --coupled --feedback`
+
+```python
+from hfb.craft import MissionConfig, simulate_mission_coupled, energy_flow_summary
+
+result = simulate_mission_coupled(x, y, cfg=MissionConfig(enable_craft_feedback=True))
+print(result["energy_flow_text"])
+```
+
+### v0.3.0 — Craft / payload dynamics
 
 Higher layer above the transducer engine:
 

@@ -135,3 +135,89 @@ def test_simulate_mission_coupled_matches_keys():
     result = simulate_mission_coupled(x, y, cfg=mission)
     assert len(result["craft"]["t"]) == len(result["series"]["t"])
     assert result["final_craft"]["speed"] >= 0.0
+    assert "energy_flow" in result
+    assert result["energy_flow"]["final_ke"] >= 0.0
+
+
+def test_energy_flow_summary_fields():
+    from hfb.craft import energy_flow_summary, format_energy_flow_summary
+
+    x, y = cartesian_grid(28, 28, extent=2.2)
+    mission = MissionConfig(
+        slingshot=SlingshotConfig(
+            nucleate_duration=0.3,
+            store_duration=1.0,
+            ready_duration=0.2,
+            release_duration=0.5,
+            phase=PhaseAlignmentConfig(threshold=0.5, drive_frequency=1.0, medium_resonance=1.0),
+            transducer=TransducerConfig(
+                enable_precharge=True, enable_pretwist=True, precharge_rate=0.7, pretwist_rate=0.6
+            ),
+        ),
+        craft=CraftConfig(mass=1.0, impulse_coupling=1.0),
+        t_max=3.0,
+        dt=0.1,
+    )
+    result = simulate_mission(x, y, cfg=mission)
+    s = result["energy_flow"]
+    for key in (
+        "total_pumped",
+        "total_passive",
+        "net_impulse",
+        "final_ke",
+        "efficiency_ke_over_pumped",
+        "efficiency_ke_over_intake",
+    ):
+        assert key in s
+    text = format_energy_flow_summary(s)
+    assert "total pumped" in text
+    assert s["efficiency_ke_over_pumped"] >= 0.0
+
+
+def test_craft_throttle_feedback_boosts_when_slow():
+    from hfb.craft import CraftState, craft_throttle_feedback
+
+    cfg = MissionConfig(
+        enable_craft_feedback=True,
+        feedback_target_speed=1.0,
+        feedback_target_position=2.0,
+        feedback_pump_gain=0.5,
+        feedback_release_gain=0.5,
+        feedback_position_gain=0.3,
+        feedback_max_boost=0.4,
+        craft=CraftConfig(axis="x"),
+    )
+    slow = CraftState(x=0.0, vx=0.0, speed=0.0)
+    fb_store = craft_throttle_feedback(slow, "store", cfg)
+    assert fb_store["pump_multiplier"] > 1.0
+    fb_rel = craft_throttle_feedback(slow, "release", cfg)
+    assert fb_rel["release_multiplier"] > 1.0
+
+    fast = CraftState(x=3.0, vx=2.0, speed=2.0)
+    fb_fast = craft_throttle_feedback(fast, "release", cfg)
+    assert fb_fast["release_multiplier"] < fb_rel["release_multiplier"]
+
+
+def test_coupled_feedback_records_multipliers():
+    x, y = cartesian_grid(24, 24, extent=2.0)
+    mission = MissionConfig(
+        slingshot=SlingshotConfig(
+            nucleate_duration=0.2,
+            store_duration=0.8,
+            ready_duration=0.2,
+            release_duration=0.5,
+            phase=PhaseAlignmentConfig(threshold=0.5, drive_frequency=1.0, medium_resonance=1.0),
+            transducer=TransducerConfig(enable_precharge=True, enable_pretwist=True, precharge_rate=0.6),
+        ),
+        craft=CraftConfig(mass=1.0),
+        t_max=2.5,
+        dt=0.1,
+        enable_craft_feedback=True,
+        feedback_target_speed=1.5,
+        feedback_pump_gain=0.4,
+        feedback_release_gain=0.4,
+    )
+    result = simulate_mission_coupled(x, y, cfg=mission)
+    assert result["coupled"] is True
+    assert "pump_multiplier" in result["series"]
+    assert result["series"]["pump_multiplier"].max() >= 1.0

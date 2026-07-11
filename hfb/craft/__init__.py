@@ -13,7 +13,14 @@ from .dynamics import (
     impulse_to_delta_v,
     integrate_craft_from_series,
 )
-from .mission import MissionConfig, simulate_mission, simulate_mission_coupled
+from .mission import (
+    MissionConfig,
+    craft_throttle_feedback,
+    energy_flow_summary,
+    format_energy_flow_summary,
+    simulate_mission,
+    simulate_mission_coupled,
+)
 
 __all__ = [
     "CraftConfig",
@@ -21,6 +28,9 @@ __all__ = [
     "MissionConfig",
     "craft_acceleration",
     "craft_step",
+    "craft_throttle_feedback",
+    "energy_flow_summary",
+    "format_energy_flow_summary",
     "initial_craft_state",
     "impulse_to_delta_v",
     "integrate_craft_from_series",

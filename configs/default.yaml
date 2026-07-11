@@ -75,6 +75,16 @@ craft:
   geometric_spring: 0.08
   es_boost: 0.10
   max_speed: 8.0
+  # Optional craft→throttle feedback (use hfb-mission --coupled --feedback)
+  enable_craft_feedback: false
+  feedback:
+    enable: false
+    target_speed: 0.8
+    target_position: 1.0
+    pump_gain: 0.35
+    release_gain: 0.35
+    position_gain: 0.15
+    max_boost: 0.40
 
 warp_compare:
   vs: 0.3

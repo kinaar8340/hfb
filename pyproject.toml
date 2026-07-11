@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hopf-flux-bubble"
-version = "0.3.0"
+version = "0.3.1"
 description = "Analog gravity, Hopf flux bubbles, electro-vibrational transducer control, and craft/payload dynamics"
 readme = "README.md"
 requires-python = ">=3.10"
