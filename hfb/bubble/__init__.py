@@ -1,5 +1,12 @@
 """Hopf Flux Bubble — effective warp-conduit synthesis."""
 
+from .hemi_void import (
+    HemiVoidConfig,
+    hemi_void_bubble_metric,
+    hemi_void_defect_density,
+    hemi_void_mask,
+    rear_hemi_mask,
+)
 from .topology import (
     defect_winding_on_ring,
     integrated_curvature_flux,
@@ -21,4 +28,9 @@ __all__ = [
     "integrated_curvature_flux",
     "defect_winding_on_ring",
     "linking_proxy",
+    "HemiVoidConfig",
+    "hemi_void_defect_density",
+    "hemi_void_mask",
+    "rear_hemi_mask",
+    "hemi_void_bubble_metric",
 ]

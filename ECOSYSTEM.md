@@ -14,15 +14,16 @@ Hopf Flux Bubble (`hfb`) is a modular node in the [kinaar8340](https://github.co
 
 ```
 hfb/
-├── analog_gravity/   # Acoustic metrics, draining vortices, ergoregions
-│   └── symbolic.py   # SymPy line elements, horizons, conformal Ricci
-├── bec/              # GPE density, vortex imprinting, Bogoliubov proxies
-├── defects/          # Conformal Poisson ΔΩ = -λ, defect densities
-├── hopf/             # Hopf fibration, Hopfion textures, linking
-├── integration/      # vqc_proto bridge (VQC_PROTO_PATH)
-├── optics/           # LG modes, nematic lensing, ray tracing, SLM export
-├── bubble/           # Flux bubble synthesis + stability sweeps
-└── utils/            # Grids, FFT Laplacian
+├── analog_gravity/       # Acoustic metrics, draining vortices, ergoregions
+│   └── symbolic.py       # SymPy line elements, horizons, conformal Ricci
+├── bec/                  # GPE density, vortex imprinting, Bogoliubov proxies
+├── defects/              # Conformal Poisson ΔΩ = -λ, defect / hemi-void densities
+├── electro_vibrational/  # Dual charges, phase lock, observer sync, slingshot
+├── hopf/                 # Hopf fibration, Hopfion textures, charge modulation
+├── integration/          # vqc_proto bridge (VQC_PROTO_PATH)
+├── optics/               # LG modes, nematic lensing, ray tracing, SLM export
+├── bubble/               # Flux bubble + hemi-void synthesis + stability
+└── utils/                # Grids, FFT Laplacian
 ```
 
 ## Notebooks
@@ -53,6 +54,8 @@ Set `VQC_PROTO_PATH` to the `orbital-braille` root (default: `~/Projects/vqc_pro
 - **Topological defects**: quantized winding, cosmic-string lensing (`defects/`, `optics/nematic.py`)
 - **Hopf structures**: linked toroidal flux walls (`hopf/`)
 - **Warp conduit analog**: shift + contraction/expansion via Ω and n_eff (`bubble/warp_conduit.py`)
+- **Resonant control**: dual charge envelopes, phase alignment, hemi-void slingshot (`electro_vibrational/`, `bubble/hemi_void.py`)
+- **Observer sync**: entrainment feedback with medium hum (`electro_vibrational/observer_sync.py`)
 - **BEC tabletop analog**: Thomas-Fermi + imprinted vortices (`bec/`)
 
 ## External References

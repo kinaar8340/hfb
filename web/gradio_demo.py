@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gradio web demo for Hopf Flux Bubble — flux metric control panel."""
+"""Gradio web demo for Hopf Flux Bubble — flux metric control panel (VQC design)."""
 
 from __future__ import annotations
 
@@ -13,9 +13,17 @@ from collections.abc import Callable, Iterator
 import gradio as gr
 
 from demo_core import (
+    BOOT_QUOTE_STRING,
+    GALLERY_3D_URL,
+    GALLERY_FLUX_URL,
+    GALLERY_WARP_URL,
     GITHUB_URL,
+    HFB_RAW_URL,
     HF_SPACE_URL,
-    HFB_WALLPAPER_URL,
+    ONBOARDING_MD,
+    QVPIC_URL,
+    TERM_KEY_ACTIONS,
+    VQC_CLAIMS_MD,
     VQC_URL,
     default_run_params,
     get_build_label,
@@ -23,12 +31,21 @@ from demo_core import (
     run_flux_bubble_demo,
     run_parameter_sweep_summary,
     run_warp_compare_figure,
+    terminal_claims_snapshot,
+    terminal_defects_shards,
+    terminal_hopf_analogy,
+    terminal_keypad_map,
+    terminal_metrics_baseline,
+    terminal_pipeline_scope,
+    terminal_presets_catalog,
+    terminal_warp_export,
 )
 
 logger = logging.getLogger(__name__)
 
 
 def _patch_gradio_client_bool_schema() -> None:
+    """Avoid gradio_client crash when JSON schema contains bare bool nodes."""
     try:
         from gradio_client import utils as client_utils
 
@@ -50,51 +67,58 @@ def _patch_gradio_client_bool_schema() -> None:
 
 
 _patch_gradio_client_bool_schema()
-
 _DEFAULTS = default_run_params()
-_GALLERY_FLUX_URL = "https://raw.githubusercontent.com/kinaar8340/hfb/main/outputs/flux_bubble_demo.png"
-_GALLERY_3D_URL = "https://raw.githubusercontent.com/kinaar8340/hfb/main/outputs/flux_bubble_3d.png"
-_GALLERY_WARP_URL = "https://raw.githubusercontent.com/kinaar8340/hfb/main/outputs/warp_compare.png"
 
-_HFB_ACCENT = "#2dd4bf"
-_HFB_FIELD_FILL = "rgba(8, 18, 16, 0.50)"
-_HFB_TAB_GREEN_BG = "#14532d"
-_HFB_TAB_GREEN_BORDER = "#1ed760"
-_HFB_TAB_GREEN_TEXT = "#86efac"
-_HFB_TAB_ORANGE_BG = "#134e4a"
-_HFB_TAB_ORANGE_BORDER = "#2dd4bf"
-_HFB_TAB_ORANGE_TEXT = "#99f6e4"
-_HFB_MATRIX_GREEN = "#33ff66"
-_HFB_LOGO_GOLD = "#c9a227"
-_HFB_HOME_KEY_BG = "#000000"
+_VQC_ACCENT = "#ea580c"
+_VQC_FIELD_FILL = "rgba(10, 8, 24, 0.50)"
+_VQC_TAB_GREEN_BG = "#14532d"
+_VQC_TAB_GREEN_BORDER = "#1ed760"
+_VQC_TAB_GREEN_TEXT = "#86efac"
+_VQC_TAB_ORANGE_BG = "#7c2d12"
+_VQC_TAB_ORANGE_BORDER = "#ea580c"
+_VQC_TAB_ORANGE_TEXT = "#fdba74"
+_VQC_MATRIX_GREEN = "#33ff66"
+_VQC_LOGO_GOLD = "#c9a227"
+_VQC_HOME_KEY_BG = "#000000"
 
-CAVEATS_MD = """
-> **Effective analog only** — not literal GR curvature or superluminal transport.
-> Stability metrics (max |R|, ergo fraction, curvature flux Φ_R) are heuristic proxies
-> for tabletop exploration, not experimental claims.
-"""
-
-FLUX_BANNER_MD = """
-> **Flux bubble demo** — conformal factor Ω from defect wall + vortex flow, effective shift
-> (warp analog), acoustic c_eff² − v², and conformal geodesic rays. Topology diagnostics
-> report stable_proxy, Φ_R, and linking proxies from `bubble/stability.py`.
-"""
-
-WARP_BANNER_MD = """
-> **Warp compare** — numeric L¹ fidelity between the analog shift profile and a symbolic
-> Alcubierre β field (`analog_gravity/warp_compare.py`). Tune vs, rs, σ for the reference warp.
-"""
-
-STABILITY_BANNER_MD = """
-> **Stability sweep** — grid over bubble radius × circulation from `configs/default.yaml`.
-> Each cell reports stable_proxy, max |R|, and ergo_fraction for quick parameter scouting.
-"""
+WEBGL_3D_NOTE = ""
+SLM_PACKAGE_IDLE = ""
 
 OPTICS_LOGO_HTML = """
-<div class="hfb-optics-logo" role="img" aria-label="Hopf Flux Bubble Flux Metric Control Panel">
-  <span class="hfb-optics-brand">HOPF FLUX BUBBLE</span>
-  <span class="hfb-optics-panel-title">Flux Metric Control Panel</span>
-  <span class="hfb-optics-subtitle">DEFECT · HOPF · FLOW · ANALOG GRAVITY</span>
+<div class="vqc-optics-logo" role="img" aria-label="Orbital Braille Flux Metric Control Panel">
+  <span class="vqc-optics-brand">HOPF FLUX BUBBLE</span>
+  <span class="vqc-optics-panel-title">Flux Metric Control Panel</span>
+  <span class="vqc-optics-subtitle">DEFECT · HOPF · FLOW · ANALOG GRAVITY</span>
+</div>
+"""
+
+# Client-side CSS HFB flux screensaver — violet/cyan hopf drift (HF-safe).
+FLUX_HELIX_SCANNER_HTML = f"""
+<div class="hfb-flux-scan" role="img" aria-label="HFB flux hopf screensaver">
+  <div class="hfb-flux-aurora" aria-hidden="true"></div>
+  <div class="hfb-flux-tori" aria-hidden="true">
+    <div class="hfb-flux-torus hfb-flux-torus-1"></div>
+    <div class="hfb-flux-torus hfb-flux-torus-2"></div>
+    <div class="hfb-flux-torus hfb-flux-torus-3"></div>
+  </div>
+  <div class="hfb-flux-ribbon hfb-flux-ribbon-a" aria-hidden="true"></div>
+  <div class="hfb-flux-ribbon hfb-flux-ribbon-b" aria-hidden="true"></div>
+  <div class="hfb-flux-scanlines" aria-hidden="true"></div>
+  <div class="hfb-flux-core" aria-hidden="true"></div>
+  <pre class="hfb-flux-body">HFB FLUX HELIX DRIFT — HOPF FLUX BUBBLE
+{'─' * 72}
+toroidal defect wall   vortex flow → effective shift profile
+conformal Ω heatmap    acoustic c_eff² − v² ergo proxy
+Hopf linking texture   curvature flux Φ_R · winding proxy
+profile ref.           toroidal_bubble_wall · hopf_index=1
+analog only — not literal GR · VQC ecosystem carrier vision
+{'─' * 72}
+▸ defect wall + circulation composite engineers analog metric
+▸ warp compare plots L¹ fidelity vs Alcubierre β reference
+▸ shared VQC stack with orbital-braille + qvpic identity layer
+▸ {GITHUB_URL}
+{'─' * 72}
+press any keypad to exit</pre>
 </div>
 """
 
@@ -104,25 +128,46 @@ _OPTICS_TERM_NEWLINE_DELAY_S = 0.048
 _OPTICS_TERM_UPLINK_DELAY_S = 0.22
 _OPTICS_TERM_CURSOR = "▌"
 _OPTICS_TERM_RELEASE_DELAY_S = 0.25
+_BOOT_QUOTE_CHAR_DELAY_S = 0.1
+_BOOT_POST_QUOTE_DELAY_S = 3.0
+_BOOT_DOT_INTERVAL_S = 0.5
+_BOOT_DOT_COUNT = 6
+_BOOT_TERM_LINES = 14
+_BOOT_TERM_COLS = 56
+
+
+def _strip_md_plain(text: str) -> str:
+    """Flatten markdown blockquotes and emphasis for terminal readout."""
+    plain = re.sub(r"^>\s*", "", text.strip(), flags=re.MULTILINE)
+    plain = re.sub(r"\*\*([^*]+)\*\*", r"\1", plain)
+    plain = re.sub(r"`([^`]+)`", r"\1", plain)
+    return plain.strip()
+
+
+def _optics_terminal_frame(title: str, body: str) -> str:
+    return f"{title}\n{_OPTICS_TERM_BAR}\n{body}"
+
 
 TERM_KEYPAD_PROG_COLS = 12
 TERM_KEYPAD_PROG_ROWS = 2
 TERM_KEYPAD_COUNT = TERM_KEYPAD_PROG_COLS * TERM_KEYPAD_PROG_ROWS
 TERM_KEYPAD_DEFINED: dict[int, str] = {
-    1: "home",
-    2: "status",
-    3: "flux",
-    4: "warp",
-    5: "help",
+    index: action for index, (action, _desc) in TERM_KEY_ACTIONS.items()
 }
 TERM_KEYPAD_HOME_KEY = "key01"
 TERM_KEYPAD_DESCRIPTIONS: dict[int, str] = {
-    1: "Return to selection menu — momentary",
-    2: "Status — pipeline & environment",
-    3: "Flux bubble — metric & ray trace",
-    4: "Warp & stability — compare + sweep",
-    5: "Help — keypad & caveats",
+    index: desc for index, (_action, desc) in TERM_KEY_ACTIONS.items()
 }
+TERM_MENU_ACTIONS: tuple[str, ...] = (
+    "home",
+    "status",
+    "hopf",
+    "pipeline",
+    "metrics",
+    "build",
+    "help",
+    "helix",
+)
 TERM_UI_MENU = "menu"
 TERM_UI_PAGE = "page"
 TERM_NAV_KEYS: tuple[str, ...] = (
@@ -154,35 +199,12 @@ TERM_KEYPAD_CONTROL_ORDER: tuple[str, ...] = (
 )
 
 
-def _strip_md_plain(text: str) -> str:
-    plain = re.sub(r"^>\s*", "", text.strip(), flags=re.MULTILINE)
-    plain = re.sub(r"\*\*([^*]+)\*\*", r"\1", plain)
-    plain = re.sub(r"`([^`]+)`", r"\1", plain)
-    return plain.strip()
-
-
-def _optics_terminal_frame(title: str, body: str) -> str:
-    return f"{title}\n{_OPTICS_TERM_BAR}\n{body}"
-
-
-def _optics_assigned_keypad_lines() -> str:
-    lines = []
-    for index in sorted(TERM_KEYPAD_DEFINED):
-        tag = "01 Home" if index == 1 else f"{index:02d}"
-        lines.append(f"  [{tag}]  {TERM_KEYPAD_DESCRIPTIONS[index]}")
-    for nav_key in TERM_NAV_KEYS:
-        if nav_key in TERM_NAV_DEFINED:
-            tag = "CLR" if nav_key == "clear" else nav_key.removeprefix("dpad_").upper()
-            lines.append(f"  [{tag}]  {TERM_NAV_DEFINED[nav_key]}")
-    return "\n".join(lines)
-
-
 def _optics_terminal_home() -> str:
-    return _optics_terminal_frame("PROGRAMMABLE KEYPAD", _optics_assigned_keypad_lines())
+    return _optics_terminal_frame("PROGRAMMABLE KEYPAD", terminal_keypad_map())
 
 
 def _default_term_ui_state() -> dict:
-    return {"mode": TERM_UI_MENU, "index": 0}
+    return {"mode": TERM_UI_MENU, "index": 0, "scan": False}
 
 
 def _optics_terminal_menu(menu_index: int) -> str:
@@ -196,14 +218,42 @@ def _optics_terminal_menu(menu_index: int) -> str:
     return _optics_terminal_frame("SELECTION MENU", "\n".join(lines))
 
 
+def _term_menu_label(action: str) -> str:
+    labels = {
+        "home": "Home — Keypad Map",
+        "status": "Status — Live Pipeline",
+        "hopf": "Hopf — Flux Bubble Analogy",
+        "pipeline": "Pipeline — Defect + Flow",
+        "metrics": "Metrics — Stability Baseline",
+        "build": "Build — Deploy Stamp",
+        "help": "Help — D-pad Navigation",
+        "helix": "Helix — HFB Flux Display",
+    }
+    return labels.get(action, action)
+
+
+def _term_menu_keypad_index(action: str) -> int:
+    for index, (key, _desc) in TERM_KEY_ACTIONS.items():
+        if key == action:
+            return index
+    return 1
+
+
 def _term_menu_items() -> tuple[tuple[str, int, str, Callable[[], Iterator[str]]], ...]:
-    return (
-        ("home", 1, "Home Keypad Legend", _stream_optics_terminal_home),
-        ("status", 2, "Status Pipeline & Environment", _stream_optics_terminal_status),
-        ("flux", 3, "Flux Bubble Metric & Ray Trace", _stream_optics_terminal_flux),
-        ("warp", 4, "Warp Compare & Stability Sweep", _stream_optics_terminal_warp),
-        ("help", 5, "Help Keypad & Caveats", _stream_optics_terminal_help),
-    )
+    items = []
+    for action in TERM_MENU_ACTIONS:
+        stream_fn = TERM_KEYPAD_STREAMERS.get(action)
+        if stream_fn is None:
+            continue
+        items.append(
+            (
+                action,
+                _term_menu_keypad_index(action),
+                _term_menu_label(action),
+                stream_fn,
+            )
+        )
+    return tuple(items)
 
 
 def _term_menu_index_for_action(action: str) -> int:
@@ -214,43 +264,74 @@ def _term_menu_index_for_action(action: str) -> int:
 
 
 def _term_menu_step(menu_index: int, delta: int) -> int:
-    return (menu_index + delta) % len(_term_menu_items())
+    count = len(_term_menu_items())
+    return (menu_index + delta) % count
 
 
 def _optics_terminal_status() -> str:
     on_hf = is_hf_space()
     env = "Hugging Face Space" if on_hf else "Local Gradio"
-    grid_note = "Grid 96×96 (HF fast path)" if on_hf else "Grid 128×128 (local)"
+    grid = "96×96" if on_hf else "128×128"
     return _optics_terminal_frame(
         "SYSTEM STATUS",
         "\n".join(
             [
                 f"Environment : {env}",
-                f"Package     : hopf-flux-bubble v0.1.4",
-                f"Grid        : {grid_note}",
+                "Package     : Hopf Flux Bubble v0.1.4",
+                f"Grid        : {grid} cartesian flux metric",
                 "Pipeline    : defect wall → vortex flow → acoustic metric",
                 "Modules     : bubble/ · hopf/ · analog_gravity/ · optics/",
                 "",
                 get_build_label().replace("`", ""),
                 "",
-                "Tune dials below, then RUN FLUX BUBBLE / WARP / SWEEP.",
+                "05 Metrics · 09 Claims · 08 Helix · Run flux bubble below.",
             ]
         ),
     )
 
 
-def _optics_terminal_flux() -> str:
-    return _optics_terminal_frame("FLUX BUBBLE DEMO", _strip_md_plain(FLUX_BANNER_MD))
+def _optics_terminal_hopf() -> str:
+    return _optics_terminal_frame("HOPF ANALOGY", terminal_hopf_analogy())
+
+
+def _optics_terminal_pipeline() -> str:
+    return _optics_terminal_frame("PIPELINE SCOPE", terminal_pipeline_scope())
+
+
+def _optics_terminal_metrics() -> str:
+    return _optics_terminal_frame("METRICS BASELINE", terminal_metrics_baseline())
+
+
+def _optics_terminal_claims() -> str:
+    return _optics_terminal_frame("VQC CLAIMS MAP", terminal_claims_snapshot())
+
+
+def _optics_terminal_defects() -> str:
+    return _optics_terminal_frame("DEFECTS & CONFORMAL Ω", terminal_defects_shards())
 
 
 def _optics_terminal_warp() -> str:
-    body = "\n\n".join(
-        [
-            _strip_md_plain(WARP_BANNER_MD),
-            _strip_md_plain(STABILITY_BANNER_MD),
-        ]
+    return _optics_terminal_frame("WARP COMPARE", terminal_warp_export())
+
+
+def _optics_terminal_presets() -> str:
+    return _optics_terminal_frame("PRESET CATALOG", terminal_presets_catalog())
+
+
+def _optics_terminal_build() -> str:
+    build = get_build_label().replace("`", "")
+    return _optics_terminal_frame(
+        "BUILD / LAST UPDATED",
+        "\n".join(
+            [
+                build,
+                "",
+                "Synced from vqc_proto via scripts/sync_hf_space.sh on deploy.",
+                f"Repo: {GITHUB_URL}",
+                f"Space: {HF_SPACE_URL}",
+            ]
+        ),
     )
-    return _optics_terminal_frame("WARP & STABILITY", body)
 
 
 def _optics_terminal_help() -> str:
@@ -258,18 +339,20 @@ def _optics_terminal_help() -> str:
         "KEYPAD REFERENCE",
         "\n".join(
             [
-                "D-pad TUI — ▲▼ ◀▶ move · enter opens highlighted item",
-                "Prog keys 02–05 mirror menu items · 01 Home → menu",
+                "D-pad — ▲▼ ◀▶ move highlight · enter opens item",
+                "01 Home → selection menu (momentary)",
+                "02–08 mirror menu · 09–12 direct shortcuts",
+                "08 / menu 08 → HFB flux helix screensaver (any key stops)",
+                "clear → blank display",
                 "",
-                _optics_assigned_keypad_lines(),
-                "",
-                _strip_md_plain(CAVEATS_MD),
+                "Press 01 Home for full keypad map.",
             ]
         ),
     )
 
 
 def _stream_optics_terminal_text(full_text: str) -> Iterator[str]:
+    """Reveal terminal text one character at a time — typewriter / uplink effect."""
     shown = ""
     for ch in full_text:
         shown += ch
@@ -284,6 +367,7 @@ def _optics_terminal_uplink_banner(mode: str) -> str:
 
 
 def _optics_terminal_stream(builder: Callable[[], str], *, mode: str) -> Iterator[str]:
+    """Stream a keyed readout: uplink banner, then body character-by-character."""
     banner = _optics_terminal_uplink_banner(mode)
     yield banner + _OPTICS_TERM_CURSOR
     time.sleep(_OPTICS_TERM_UPLINK_DELAY_S)
@@ -298,19 +382,56 @@ def _stream_optics_terminal_status() -> Iterator[str]:
     yield from _optics_terminal_stream(_optics_terminal_status, mode="status")
 
 
-def _stream_optics_terminal_flux() -> Iterator[str]:
-    yield from _optics_terminal_stream(_optics_terminal_flux, mode="flux")
+def _stream_optics_terminal_hopf() -> Iterator[str]:
+    yield from _optics_terminal_stream(_optics_terminal_hopf, mode="hopf")
+
+
+def _stream_optics_terminal_pipeline() -> Iterator[str]:
+    yield from _optics_terminal_stream(_optics_terminal_pipeline, mode="pipeline")
+
+
+def _stream_optics_terminal_metrics() -> Iterator[str]:
+    yield from _optics_terminal_stream(_optics_terminal_metrics, mode="metrics")
+
+
+def _stream_optics_terminal_claims() -> Iterator[str]:
+    yield from _optics_terminal_stream(_optics_terminal_claims, mode="claims")
+
+
+def _stream_optics_terminal_defects() -> Iterator[str]:
+    yield from _optics_terminal_stream(_optics_terminal_defects, mode="defects")
 
 
 def _stream_optics_terminal_warp() -> Iterator[str]:
     yield from _optics_terminal_stream(_optics_terminal_warp, mode="warp")
 
 
+def _stream_optics_terminal_presets() -> Iterator[str]:
+    yield from _optics_terminal_stream(_optics_terminal_presets, mode="presets")
+
+
+def _stream_helix_stub() -> Iterator[str]:
+    """Menu placeholder — helix display uses CSS toggle via key 08 / d-pad."""
+    yield ""
+
+
+def _stream_optics_terminal_build() -> Iterator[str]:
+    yield from _optics_terminal_stream(_optics_terminal_build, mode="build")
+
+
 def _stream_optics_terminal_help() -> Iterator[str]:
     yield from _optics_terminal_stream(_optics_terminal_help, mode="help")
 
 
+def _stream_optics_terminal_menu(menu_index: int = 0) -> Iterator[str]:
+    yield from _optics_terminal_stream(
+        lambda: _optics_terminal_menu(menu_index),
+        mode="menu",
+    )
+
+
 def _stream_optics_terminal_clear(current: str) -> Iterator[str]:
+    """Erase display in paced chunks — inverse of the typewriter feed."""
     text = current or ""
     if not text:
         yield ""
@@ -330,12 +451,14 @@ def _term_key_id(index: int) -> str:
 
 
 def _term_keypad_label(index: int) -> str:
+    """Home key is '01 Home'; other prog keys are zero-padded."""
     if index == 1:
         return "01 Home"
     return f"{index:02d}"
 
 
 def _term_key_is_defined_prog(key: str) -> bool:
+    """True for assigned prog keys (02–24) that have a real function."""
     for index in TERM_KEYPAD_DEFINED:
         if index == 1:
             continue
@@ -345,17 +468,18 @@ def _term_key_is_defined_prog(key: str) -> bool:
 
 
 def _term_key_btn_classes(key: str, active: str) -> list[str]:
-    classes = ["hfb-optics-key"]
+    """Black/white idle caps; matrix-green latch on active keys (never home)."""
+    classes = ["vqc-optics-key"]
     if key in TERM_NAV_KEYS:
-        classes.append("hfb-optics-dpad-key")
+        classes.append("vqc-optics-dpad-key")
     if key == TERM_KEYPAD_HOME_KEY:
-        classes.append("hfb-optics-key-home")
+        classes.append("vqc-optics-key-home")
     elif key.startswith("dpad_"):
-        classes.append("hfb-optics-key-dpad")
+        classes.append("vqc-optics-key-dpad")
     if key == "clear":
-        classes.append("hfb-optics-key-clear")
+        classes.append("vqc-optics-key-clear")
     if _term_key_is_defined_prog(key):
-        classes.append("hfb-optics-key-defined")
+        classes.append("vqc-optics-key-defined")
     if key == active and key != TERM_KEYPAD_HOME_KEY:
         classes.append("active")
     return classes
@@ -370,7 +494,18 @@ def _term_keypad_btn_updates(active: str) -> tuple:
 
 def _term_keypad_outputs(terminal_text: str, active: str, ui_state: dict | None = None) -> tuple:
     state = _default_term_ui_state() if ui_state is None else ui_state
-    return (terminal_text, *_term_keypad_btn_updates(active), active, state)
+    scanning = bool(state.get("scan"))
+    return (
+        gr.update(
+            value=terminal_text,
+            visible=not scanning,
+            elem_classes=["vqc-optics-terminal-wrap", "vqc-optics-terminal"],
+        ),
+        gr.update(visible=scanning),
+        *_term_keypad_btn_updates(active),
+        active,
+        state,
+    )
 
 
 def _term_yield_stream_then_release(
@@ -380,6 +515,7 @@ def _term_yield_stream_then_release(
     ui_state: dict,
     release_delay: float | None = None,
 ) -> Iterator[tuple]:
+    """Stream terminal text, latch while typing, release latch after a short pause."""
     delay = _OPTICS_TERM_RELEASE_DELAY_S if release_delay is None else release_delay
     last_partial = ""
     for partial in stream:
@@ -395,6 +531,7 @@ def _term_stream_with_latch(
     active: str,
     ui_state: dict,
 ) -> Iterator[tuple]:
+    """Stream terminal text and latch matrix-green active state on the pressed key."""
     yield from _term_yield_stream_then_release(stream_fn(), active=active, ui_state=ui_state)
 
 
@@ -407,10 +544,15 @@ def _make_term_stream_click(
     def handler(ui_state: dict) -> Iterator[tuple]:
         state = dict(ui_state) if ui_state else _default_term_ui_state()
         if menu_action is not None:
-            state = {
-                "mode": TERM_UI_PAGE,
-                "index": _term_menu_index_for_action(menu_action),
-            }
+            state.update(
+                {
+                    "mode": TERM_UI_PAGE,
+                    "index": _term_menu_index_for_action(menu_action),
+                    "scan": menu_action == "helix",
+                }
+            )
+        else:
+            state["scan"] = False
         yield from _term_stream_with_latch(stream_fn, active=active_key, ui_state=state)
 
     return handler
@@ -419,6 +561,7 @@ def _make_term_stream_click(
 def _make_term_clear_click(active_key: str):
     def handler(current: str, ui_state: dict) -> Iterator[tuple]:
         state = dict(ui_state) if ui_state else _default_term_ui_state()
+        state["scan"] = False
         yield from _term_yield_stream_then_release(
             _stream_optics_terminal_clear(current),
             active=active_key,
@@ -428,7 +571,21 @@ def _make_term_clear_click(active_key: str):
     return handler
 
 
+def _make_term_momentary_click(active_key: str, *, release_delay: float):
+    """Brief latch flash — momentary, no maintained state."""
+
+    def handler(current: str, ui_state: dict) -> Iterator[tuple]:
+        state = dict(ui_state) if ui_state else _default_term_ui_state()
+        yield _term_keypad_outputs(current, active_key, state)
+        time.sleep(release_delay)
+        yield _term_keypad_outputs(current, "", state)
+
+    return handler
+
+
 def _make_term_dpad_click(active_key: str):
+    """D-pad click — navigate menu, confirm with SEL, brief matrix-green latch."""
+
     def handler(_current: str, ui_state: dict) -> Iterator[tuple]:
         state = dict(ui_state) if ui_state else _default_term_ui_state()
         mode = state.get("mode", TERM_UI_MENU)
@@ -442,11 +599,11 @@ def _make_term_dpad_click(active_key: str):
 
         if active_key in nav_delta:
             if mode == TERM_UI_PAGE:
-                menu_state = {"mode": TERM_UI_MENU, "index": menu_index}
+                menu_state = {"mode": TERM_UI_MENU, "index": menu_index, "scan": False}
                 text = _optics_terminal_menu(menu_index)
             else:
                 new_index = _term_menu_step(menu_index, nav_delta[active_key])
-                menu_state = {"mode": TERM_UI_MENU, "index": new_index}
+                menu_state = {"mode": TERM_UI_MENU, "index": new_index, "scan": False}
                 text = _optics_terminal_menu(new_index)
             yield _term_keypad_outputs(text, active_key, menu_state)
             time.sleep(_OPTICS_TERM_RELEASE_DELAY_S)
@@ -455,15 +612,29 @@ def _make_term_dpad_click(active_key: str):
 
         if active_key == "dpad_select":
             if mode == TERM_UI_MENU:
-                _action, _keypad, _label, stream_fn = _term_menu_items()[menu_index]
-                page_state = {"mode": TERM_UI_PAGE, "index": menu_index}
+                action, _keypad, _label, stream_fn = _term_menu_items()[menu_index]
+                if action == "helix":
+                    page_state = {
+                        "mode": TERM_UI_PAGE,
+                        "index": menu_index,
+                        "scan": True,
+                    }
+                    yield _term_keypad_outputs("", "dpad_select", page_state)
+                    time.sleep(_OPTICS_TERM_RELEASE_DELAY_S)
+                    yield _term_keypad_outputs("", "", page_state)
+                    return
+                page_state = {
+                    "mode": TERM_UI_PAGE,
+                    "index": menu_index,
+                    "scan": False,
+                }
                 yield from _term_yield_stream_then_release(
                     stream_fn(),
                     active="dpad_select",
                     ui_state=page_state,
                 )
                 return
-            menu_state = {"mode": TERM_UI_MENU, "index": menu_index}
+            menu_state = {"mode": TERM_UI_MENU, "index": menu_index, "scan": False}
             text = _optics_terminal_menu(menu_index)
             yield _term_keypad_outputs(text, active_key, menu_state)
             time.sleep(_OPTICS_TERM_RELEASE_DELAY_S)
@@ -473,16 +644,40 @@ def _make_term_dpad_click(active_key: str):
 
 
 def _make_term_latch_click(active_key: str):
+    """Undefined keypad slots — latch matrix-green only, terminal unchanged."""
+
     def handler(current: str, ui_state: dict) -> tuple:
         state = dict(ui_state) if ui_state else _default_term_ui_state()
+        state["scan"] = False
         return _term_keypad_outputs(current, active_key, state)
 
     return handler
 
 
+def _make_activate_oam_helix_scan(active_key: str, *, menu_action: str = "helix"):
+    """Toggle CSS HFB flux helix drift — one yield, no server animation loop."""
+
+    def handler(ui_state: dict) -> Iterator[tuple]:
+        state = dict(ui_state) if ui_state else _default_term_ui_state()
+        state.update(
+            {
+                "mode": TERM_UI_PAGE,
+                "index": _term_menu_index_for_action(menu_action),
+                "scan": True,
+            }
+        )
+        yield _term_keypad_outputs("", active_key, state)
+        time.sleep(_OPTICS_TERM_RELEASE_DELAY_S)
+        yield _term_keypad_outputs("", "", state)
+
+    return handler
+
+
 def _make_term_home_momentary():
+    """Home — momentary return to the selection menu."""
+
     def handler(current_active: str, ui_state: dict) -> Iterator[tuple]:
-        menu_state = {"mode": TERM_UI_MENU, "index": 0}
+        menu_state = {"mode": TERM_UI_MENU, "index": 0, "scan": False}
         menu_text = _optics_terminal_menu(0)
         yield _term_keypad_outputs(menu_text, current_active, menu_state)
         time.sleep(_OPTICS_TERM_RELEASE_DELAY_S)
@@ -491,9 +686,34 @@ def _make_term_home_momentary():
     return handler
 
 
-def _term_boot_home() -> tuple:
+def _boot_quote_prefix() -> str:
+    """Pad so the quote types out near the middle of the terminal panel."""
+    v_pad = max(0, (_BOOT_TERM_LINES - 1) // 2)
+    h_pad = max(0, (_BOOT_TERM_COLS - len(BOOT_QUOTE_STRING)) // 2)
+    return "\n" * v_pad + (" " * h_pad)
+
+
+def _stream_term_boot() -> Iterator[tuple]:
+    """One-shot startup: centered quote, dot countdown, then selection menu."""
     boot_state = _default_term_ui_state()
-    return _term_keypad_outputs(_optics_terminal_menu(0), "", boot_state)
+    shown = _boot_quote_prefix()
+    yield _term_keypad_outputs(shown, "", boot_state)
+
+    for ch in BOOT_QUOTE_STRING:
+        shown += ch
+        yield _term_keypad_outputs(shown + _OPTICS_TERM_CURSOR, "", boot_state)
+        time.sleep(_BOOT_QUOTE_CHAR_DELAY_S)
+
+    yield _term_keypad_outputs(shown, "", boot_state)
+    time.sleep(_BOOT_POST_QUOTE_DELAY_S)
+
+    for _ in range(_BOOT_DOT_COUNT):
+        shown += "."
+        yield _term_keypad_outputs(shown, "", boot_state)
+        time.sleep(_BOOT_DOT_INTERVAL_S)
+
+    menu_text = _optics_terminal_menu(0)
+    yield _term_keypad_outputs(menu_text, "", boot_state)
 
 
 def _register_term_keypad_streamers() -> None:
@@ -501,9 +721,16 @@ def _register_term_keypad_streamers() -> None:
         {
             "home": _stream_optics_terminal_home,
             "status": _stream_optics_terminal_status,
-            "flux": _stream_optics_terminal_flux,
-            "warp": _stream_optics_terminal_warp,
+            "hopf": _stream_optics_terminal_hopf,
+            "pipeline": _stream_optics_terminal_pipeline,
+            "metrics": _stream_optics_terminal_metrics,
+            "build": _stream_optics_terminal_build,
             "help": _stream_optics_terminal_help,
+            "helix": _stream_helix_stub,
+            "claims": _stream_optics_terminal_claims,
+            "defects": _stream_optics_terminal_defects,
+            "warp": _stream_optics_terminal_warp,
+            "presets": _stream_optics_terminal_presets,
         }
     )
 
@@ -512,25 +739,29 @@ _register_term_keypad_streamers()
 
 
 def _external_tab_html(label: str, url: str, tab_id: str) -> str:
+    """External Source bookmark — opens in a new tab."""
     return (
-        f'<a href="{url}" class="hfb-source-tab" data-tab="{tab_id}" '
+        f'<a href="{url}" class="vqc-source-tab" data-tab="{tab_id}" '
         f'target="_blank" rel="noopener noreferrer">{label}</a>'
     )
 
 
 def _source_tab_btn_update(*, active: bool) -> gr.Update:
+    """Animations tab — orange only when that page is open; otherwise green."""
     if active:
-        return gr.update(interactive=False, elem_classes=["hfb-source-tab", "active"])
-    return gr.update(interactive=True, elem_classes=["hfb-source-tab"], variant="secondary")
+        return gr.update(interactive=False, elem_classes=["vqc-source-tab", "active"])
+    return gr.update(interactive=True, elem_classes=["vqc-source-tab"], variant="secondary")
 
 
 def _home_tab_update(*, on_demo_page: bool) -> gr.Update:
+    """Live demo tab: orange on demo page, green link back from Animations."""
     if on_demo_page:
-        return gr.update(interactive=False, elem_classes=["hfb-source-tab", "active"], variant="secondary")
-    return gr.update(interactive=True, elem_classes=["hfb-source-tab"], variant="secondary")
+        return gr.update(interactive=False, elem_classes=["vqc-source-tab", "active"], variant="secondary")
+    return gr.update(interactive=True, elem_classes=["vqc-source-tab"], variant="secondary")
 
 
 def _close_links_panels() -> tuple:
+    """Hide both Links-bar panels and reset their tab highlights."""
     return (
         gr.update(visible=False),
         _source_tab_btn_update(active=False),
@@ -542,6 +773,7 @@ def _close_links_panels() -> tuple:
 
 
 def _nav_to_page(page: str) -> tuple:
+    """Switch between demo and animations screens; refresh Source tab highlights."""
     on_demo = page == "demo"
     closed = _close_links_panels()
     return (
@@ -556,7 +788,8 @@ def _nav_to_page(page: str) -> tuple:
     )
 
 
-def _toggle_caveats(is_open: bool) -> tuple:
+def _toggle_newhere(is_open: bool) -> tuple:
+    """Expand/collapse the beginner guide; close Claims if opening New here?."""
     show = not is_open
     return (
         gr.update(visible=show),
@@ -568,7 +801,20 @@ def _toggle_caveats(is_open: bool) -> tuple:
     )
 
 
-def _minimize_caveats() -> tuple:
+def _toggle_claims(is_open: bool) -> tuple:
+    """Expand/collapse VQC claims; close New here? if opening Claims."""
+    show = not is_open
+    return (
+        gr.update(visible=show),
+        _source_tab_btn_update(active=show),
+        show,
+        gr.update(visible=False),
+        _source_tab_btn_update(active=False),
+        False,
+    )
+
+
+def _minimize_newhere() -> tuple:
     return (
         gr.update(visible=False),
         _source_tab_btn_update(active=False),
@@ -576,25 +822,19 @@ def _minimize_caveats() -> tuple:
     )
 
 
-def _gallery_grid_html() -> str:
-    panels = (
-        ("Flux bubble 4-panel", _GALLERY_FLUX_URL),
-        ("3D torus surface", _GALLERY_3D_URL),
-        ("Warp compare", _GALLERY_WARP_URL),
+def _minimize_claims() -> tuple:
+    return (
+        gr.update(visible=False),
+        _source_tab_btn_update(active=False),
+        False,
     )
-    imgs = "".join(
-        f'<figure class="hfb-gallery-figure">'
-        f'<img src="{url}" alt="{title}" loading="lazy" />'
-        f'<figcaption>{title}</figcaption></figure>'
-        for title, url in panels
-    )
-    return f'<div class="hfb-gallery-wrap">{imgs}</div>'
 
 
-def _build_hfb_theme() -> gr.themes.Base:
+def _build_vqc_theme() -> gr.themes.Base:
+    """Dark transparent theme — works in light and dark OS modes (HF-safe)."""
     return (
         gr.themes.Base(
-            primary_hue=gr.themes.colors.teal,
+            primary_hue=gr.themes.colors.orange,
             secondary_hue=gr.themes.colors.zinc,
             neutral_hue=gr.themes.colors.zinc,
         )
@@ -605,47 +845,50 @@ def _build_hfb_theme() -> gr.themes.Base:
             background_fill_primary_dark="transparent",
             background_fill_secondary="transparent",
             background_fill_secondary_dark="transparent",
-            block_background_fill=_HFB_FIELD_FILL,
-            block_background_fill_dark=_HFB_FIELD_FILL,
-            panel_background_fill=_HFB_FIELD_FILL,
-            panel_background_fill_dark=_HFB_FIELD_FILL,
-            input_background_fill=_HFB_FIELD_FILL,
-            input_background_fill_dark=_HFB_FIELD_FILL,
-            body_text_color="#e0f2f1",
-            body_text_color_dark="#e0f2f1",
-            block_label_text_color="#99f6e4",
-            block_label_text_color_dark="#99f6e4",
-            block_title_text_color="#ccfbf1",
-            block_title_text_color_dark="#ccfbf1",
+            block_background_fill=_VQC_FIELD_FILL,
+            block_background_fill_dark=_VQC_FIELD_FILL,
+            panel_background_fill=_VQC_FIELD_FILL,
+            panel_background_fill_dark=_VQC_FIELD_FILL,
+            input_background_fill=_VQC_FIELD_FILL,
+            input_background_fill_dark=_VQC_FIELD_FILL,
+            body_text_color="#e8e0f8",
+            body_text_color_dark="#e8e0f8",
+            block_label_text_color="#c9b8ff",
+            block_label_text_color_dark="#c9b8ff",
+            block_title_text_color="#f0e6ff",
+            block_title_text_color_dark="#f0e6ff",
             border_color_primary="rgba(255, 255, 255, 0.12)",
             border_color_primary_dark="rgba(255, 255, 255, 0.12)",
-            button_primary_background_fill="#0d9488",
-            button_primary_background_fill_dark="#0d9488",
+            button_primary_background_fill="#ea580c",
+            button_primary_background_fill_dark="#ea580c",
             button_primary_text_color="#ffffff",
             button_primary_text_color_dark="#ffffff",
-            button_secondary_background_fill="rgba(12, 28, 24, 0.92)",
-            button_secondary_background_fill_dark="rgba(12, 28, 24, 0.92)",
-            button_secondary_text_color="#e0f2f1",
-            button_secondary_text_color_dark="#e0f2f1",
+            button_secondary_background_fill="rgba(28, 22, 48, 0.92)",
+            button_secondary_background_fill_dark="rgba(28, 22, 48, 0.92)",
+            button_secondary_text_color="#e8e0f8",
+            button_secondary_text_color_dark="#e8e0f8",
             checkbox_label_background_fill="transparent",
             checkbox_label_background_fill_dark="transparent",
-            slider_color=_HFB_ACCENT,
-            slider_color_dark=_HFB_ACCENT,
-            link_text_color=_HFB_ACCENT,
-            link_text_color_dark=_HFB_ACCENT,
-            link_text_color_hover="#5eead4",
-            link_text_color_hover_dark="#5eead4",
-            link_text_color_active=_HFB_ACCENT,
-            link_text_color_active_dark=_HFB_ACCENT,
-            link_text_color_visited=_HFB_ACCENT,
-            link_text_color_visited_dark=_HFB_ACCENT,
+            checkbox_label_background_fill_hover="transparent",
+            checkbox_label_background_fill_hover_dark="transparent",
+            slider_color=_VQC_ACCENT,
+            slider_color_dark=_VQC_ACCENT,
+            link_text_color=_VQC_ACCENT,
+            link_text_color_dark=_VQC_ACCENT,
+            link_text_color_hover="#f97316",
+            link_text_color_hover_dark="#f97316",
+            link_text_color_active=_VQC_ACCENT,
+            link_text_color_active_dark=_VQC_ACCENT,
+            link_text_color_visited=_VQC_ACCENT,
+            link_text_color_visited_dark=_VQC_ACCENT,
         )
     )
 
 
+# Wallpaper: #vqc-wallpaper (body child) + body::before fallback — cover, fixed to viewport.
 WALLPAPER_HEAD = f"""
-<style id="hfb-wallpaper-style">
-#hfb-wallpaper {{
+<style id="vqc-wallpaper-style">
+#vqc-wallpaper {{
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -653,8 +896,8 @@ WALLPAPER_HEAD = f"""
     height: 100vh !important;
     z-index: -9999 !important;
     pointer-events: none !important;
-    background-color: #061210 !important;
-    background-image: url('{HFB_WALLPAPER_URL}') !important;
+    background-color: #0a0818 !important;
+    background-image: url('{HFB_RAW_URL}') !important;
     background-size: cover !important;
     background-position: center center !important;
     background-repeat: no-repeat !important;
@@ -663,9 +906,9 @@ WALLPAPER_HEAD = f"""
 <script>
 (function() {{
     function mountWallpaper() {{
-        if (document.getElementById('hfb-wallpaper')) return;
+        if (document.getElementById('vqc-wallpaper')) return;
         var wp = document.createElement('div');
-        wp.id = 'hfb-wallpaper';
+        wp.id = 'vqc-wallpaper';
         wp.setAttribute('aria-hidden', 'true');
         document.body.insertBefore(wp, document.body.firstChild);
     }}
@@ -681,208 +924,1012 @@ HFB_CSS = f"""
     --body-background-fill: transparent !important;
     --background-fill-primary: transparent !important;
     --background-fill-secondary: transparent !important;
-    --block-background-fill: {_HFB_FIELD_FILL} !important;
-    --panel-background-fill: {_HFB_FIELD_FILL} !important;
-    --input-background-fill: {_HFB_FIELD_FILL} !important;
-    --body-text-color: #e0f2f1 !important;
-    --block-label-text-color: #99f6e4 !important;
-    --block-title-text-color: #ccfbf1 !important;
+    --block-background-fill: {_VQC_FIELD_FILL} !important;
+    --panel-background-fill: {_VQC_FIELD_FILL} !important;
+    --input-background-fill: {_VQC_FIELD_FILL} !important;
+    --body-text-color: #e8e0f8 !important;
+    --block-label-text-color: #c9b8ff !important;
+    --block-title-text-color: #f0e6ff !important;
     --border-color-primary: rgba(255, 255, 255, 0.12) !important;
-    --link-text-color: {_HFB_ACCENT} !important;
+    --link-text-color: {_VQC_ACCENT} !important;
+    --link-text-color-hover: #f97316 !important;
+    --link-text-color-active: {_VQC_ACCENT} !important;
+    --link-text-color-visited: {_VQC_ACCENT} !important;
     color-scheme: dark;
 }}
-html {{ background-color: #061210 !important; min-height: 100% !important; }}
+html {{
+    background-color: #0a0818 !important;
+    min-height: 100% !important;
+}}
 body {{
     background: transparent !important;
-    color: #e0f2f1 !important;
+    background-color: transparent !important;
+    color: #e8e0f8 !important;
     min-height: 100vh !important;
     width: 100% !important;
     overflow-x: hidden !important;
+    position: relative !important;
 }}
 body::before {{
     content: "" !important;
     position: fixed !important;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
     z-index: -9998 !important;
     pointer-events: none !important;
-    background-color: #061210 !important;
-    background-image: url('{HFB_WALLPAPER_URL}') !important;
+    background-color: #0a0818 !important;
+    background-image: url('{HFB_RAW_URL}') !important;
     background-size: cover !important;
     background-position: center center !important;
+    background-repeat: no-repeat !important;
+}}
+#root, .app {{
+    background: transparent !important;
+    background-color: transparent !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: 100% !important;
 }}
 .gradio-container {{
     position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    background: transparent !important;
+    background-color: transparent !important;
+}}
+footer {{
     background: transparent !important;
 }}
+.gradio-container .main,
+.gradio-container .wrap,
+.gradio-container .contain,
+.gradio-container .tabs,
+.gradio-container .tabitem,
+.gradio-container .form,
+.gradio-container .column,
+.gradio-container .row,
+.gradio-container .gr-group,
+.gradio-container label.wrap,
+.gradio-container .label-wrap {{
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}}
 .gradio-container .block {{
-    background-color: {_HFB_FIELD_FILL} !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    background-color: {_VQC_FIELD_FILL} !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 10px !important;
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }}
-.gradio-container .markdown, .gradio-container .prose, .gradio-container .markdown p {{
-    color: #e0f2f1 !important;
+.gradio-container .markdown,
+.gradio-container .prose,
+.gradio-container .markdown p,
+.gradio-container .markdown h1,
+.gradio-container .markdown h2,
+.gradio-container .markdown li {{
+    color: #e8e0f8 !important;
 }}
-.gradio-container .hfb-source-tab,
-.gradio-container .hfb-source-tabs-row button.hfb-source-tab,
-.gradio-container .hfb-nav-cell a.hfb-source-tab {{
-    color: {_HFB_MATRIX_GREEN} !important;
-    -webkit-text-fill-color: {_HFB_MATRIX_GREEN} !important;
-    text-decoration: underline !important;
-    text-decoration-color: {_HFB_MATRIX_GREEN} !important;
+.gradio-container .vqc-source-tabs-row {{
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.45rem 0.65rem !important;
+    margin: 0.35rem 0 0.1rem 0 !important;
     background: transparent !important;
     border: none !important;
-    font-weight: 600 !important;
-    font-size: 0.92rem !important;
+    box-shadow: none !important;
+}}
+.gradio-container .vqc-source-nav-row {{
+    margin: 0 0 0.1rem 0 !important;
+}}
+.gradio-container .vqc-links-panel {{
+    margin: 0 0 0.35rem 0 !important;
+    padding: 0.65rem 0.85rem !important;
+}}
+.gradio-container .vqc-links-panel .markdown h3 {{
+    margin: 0 !important;
+    font-size: 1rem !important;
+    color: #f0e6ff !important;
+}}
+.gradio-container .vqc-panel-header-row {{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+    margin: 0 0 0.35rem 0 !important;
+}}
+.gradio-container .vqc-panel-header-row > .block,
+.gradio-container .vqc-panel-header-row > .form {{
+    background: transparent !important;
+    border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
 }}
-.gradio-container .hfb-source-tab.active,
-.gradio-container .hfb-source-tabs-row button.hfb-source-tab.active {{
-    color: {_HFB_LOGO_GOLD} !important;
-    -webkit-text-fill-color: {_HFB_LOGO_GOLD} !important;
-    text-decoration-color: {_HFB_LOGO_GOLD} !important;
+.gradio-container button.vqc-panel-minimize {{
+    flex: 0 0 auto !important;
+    min-width: 2.1rem !important;
+    padding: 0.2rem 0.6rem !important;
+    border-radius: 999px !important;
+    border: 1px solid {_VQC_TAB_GREEN_BORDER} !important;
+    background: {_VQC_TAB_GREEN_BG} !important;
+    color: {_VQC_TAB_GREEN_TEXT} !important;
+    -webkit-text-fill-color: {_VQC_TAB_GREEN_TEXT} !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+    opacity: 0.8 !important;
+    cursor: pointer !important;
+}}
+.gradio-container button.vqc-panel-minimize:hover {{
+    border-color: {_VQC_TAB_ORANGE_BORDER} !important;
+    background: {_VQC_TAB_ORANGE_BG} !important;
+    color: {_VQC_TAB_ORANGE_TEXT} !important;
+    -webkit-text-fill-color: {_VQC_TAB_ORANGE_TEXT} !important;
+}}
+.gradio-container .vqc-source-tabs-row > .block,
+.gradio-container .vqc-source-tabs-row > .form,
+.gradio-container .vqc-source-tabs-row .block,
+.gradio-container .vqc-source-tabs-row .form {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+}}
+.gradio-container .vqc-source-tabs-row .html-container {{
+    padding: 0 !important;
+    margin: 0 !important;
+}}
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.secondary,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.secondary:hover,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.secondary:focus {{
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}}
+.gradio-container .vqc-source-label {{
+    color: #e8e0f8 !important;
+    font-size: 0.92rem !important;
+    font-weight: 600 !important;
+    margin-right: 0.15rem !important;
+    line-height: 1.2 !important;
+}}
+.gradio-container .vqc-source-tab,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab span,
+.gradio-container .vqc-nav-cell a.vqc-source-tab {{
+    display: inline !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    color: {_VQC_MATRIX_GREEN} !important;
+    -webkit-text-fill-color: {_VQC_MATRIX_GREEN} !important;
+    text-decoration: underline !important;
+    text-decoration-color: {_VQC_MATRIX_GREEN} !important;
+    text-underline-offset: 0.18em !important;
+    font-weight: 600 !important;
+    font-size: 0.92rem !important;
+    line-height: 1.35 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    white-space: nowrap !important;
+    min-height: unset !important;
+    height: auto !important;
+    width: auto !important;
+    margin: 0 !important;
+    opacity: 1 !important;
+    text-shadow: 0 0 6px rgba(51, 255, 102, 0.25) !important;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease, opacity 0.15s ease;
+}}
+.gradio-container a.vqc-source-tab:hover,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab:not(.active):hover,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab:not(.active):hover span {{
+    color: #7dff9a !important;
+    -webkit-text-fill-color: #7dff9a !important;
+    text-decoration-color: #7dff9a !important;
+    background: transparent !important;
+    text-decoration: underline !important;
+}}
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab {{
+    cursor: pointer !important;
+    font-family: inherit !important;
+}}
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab:disabled:not(.active),
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab[disabled]:not(.active),
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.secondary:disabled:not(.active),
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab:disabled:not(.active) span,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab[disabled]:not(.active) span {{
+    cursor: pointer !important;
+    color: {_VQC_MATRIX_GREEN} !important;
+    -webkit-text-fill-color: {_VQC_MATRIX_GREEN} !important;
+    text-decoration-color: {_VQC_MATRIX_GREEN} !important;
+    background: transparent !important;
+    text-decoration: underline !important;
+}}
+.gradio-container .vqc-source-tab.active,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active span,
+.gradio-container .vqc-source-tab.active:hover,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active:hover,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active:hover span,
+.gradio-container a.vqc-source-tab.active {{
+    color: {_VQC_LOGO_GOLD} !important;
+    -webkit-text-fill-color: {_VQC_LOGO_GOLD} !important;
+    text-decoration-color: {_VQC_LOGO_GOLD} !important;
+    background: transparent !important;
+    text-decoration: underline !important;
     text-decoration-thickness: 2px !important;
+    cursor: default !important;
+    opacity: 1 !important;
+    text-shadow: 0 0 8px rgba(201, 162, 39, 0.45) !important;
 }}
-.gradio-container .hfb-optics-panel {{
-    background: linear-gradient(165deg, #102820 0%, #0a1a14 38%, #061210 100%) !important;
-    border: 3px solid #1d6b5c !important;
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active:disabled,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active[disabled],
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active:disabled span,
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active[disabled] span {{
+    color: {_VQC_LOGO_GOLD} !important;
+    -webkit-text-fill-color: {_VQC_LOGO_GOLD} !important;
+    text-decoration-color: {_VQC_LOGO_GOLD} !important;
+    background: transparent !important;
+    text-decoration: underline !important;
+    text-decoration-thickness: 2px !important;
+    cursor: default !important;
+}}
+.gradio-container .vqc-source-tabs-row button.vqc-source-tab.active::before {{
+    content: none !important;
+    display: none !important;
+}}
+.gradio-container a:hover:not(.vqc-source-tab),
+.gradio-container .markdown a:hover:not(.vqc-source-tab),
+.gradio-container .prose a:hover:not(.vqc-source-tab) {{
+    color: #f97316 !important;
+    -webkit-text-fill-color: #f97316 !important;
+}}
+.gradio-container .vqc-build-label {{
+    color: #a89ec8 !important;
+    font-size: 0.9rem;
+    margin: 0 0 0.5rem 0;
+}}
+.gradio-container .vqc-gallery-page .markdown h2 {{
+    font-size: 1.35rem !important;
+    margin: 0.15rem 0 0.35rem 0 !important;
+}}
+.gradio-container .vqc-gallery-page .markdown p {{
+    font-size: 0.92rem !important;
+    margin: 0.15rem 0 0.35rem 0 !important;
+    line-height: 1.45 !important;
+}}
+.gradio-container .vqc-gallery-page,
+.gradio-container .vqc-gallery-page > .block,
+.gradio-container .vqc-gallery-page .html-container {{
+    width: 100% !important;
+    max-width: 100% !important;
+}}
+.gradio-container .vqc-screencast-wrap {{
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0.25rem 0 0.5rem 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}}
+.gradio-container .vqc-screencast-video {{
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9 !important;
+    max-height: min(36vh, 360px) !important;
+    object-fit: contain !important;
+    border-radius: 8px !important;
+    display: block !important;
+    background: rgba(10, 8, 24, 0.35) !important;
+}}
+.gradio-container .vqc-optics-panel {{
+    background: linear-gradient(165deg, #2a1810 0%, #1a1008 38%, #120c06 100%) !important;
+    border: 3px solid #6b4f1d !important;
     border-radius: 14px !important;
+    box-shadow:
+        inset 0 2px 8px rgba(255, 220, 150, 0.08),
+        inset 0 -4px 14px rgba(0, 0, 0, 0.55),
+        0 8px 22px rgba(0, 0, 0, 0.45) !important;
     padding: 0 1rem 1rem !important;
     margin: 0.5rem 0 0.75rem 0 !important;
+    gap: 0 !important;
 }}
-.gradio-container .hfb-optics-panel-header {{
+.gradio-container .vqc-optics-panel > .gap {{
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}}
+.gradio-container .vqc-optics-panel > .block,
+.gradio-container .vqc-optics-panel .block {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}}
+.gradio-container .vqc-optics-panel-header {{
     display: flex !important;
     flex-wrap: wrap !important;
     align-items: center !important;
     gap: 0.75rem 1.1rem !important;
+    margin: 0 0 0 0 !important;
     padding: 0.7rem 0.85rem 1.35rem !important;
-    border-bottom: 1px solid rgba(29, 107, 92, 0.65) !important;
-    background: linear-gradient(180deg, #0f2018 0%, #061210 100%) !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(74, 56, 24, 0.65) !important;
+    border-radius: 10px 10px 0 0 !important;
+    background: linear-gradient(180deg, #1f140a 0%, #0f0a06 100%) !important;
+    box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.65) !important;
+    width: 100% !important;
     min-height: 5.25rem !important;
 }}
-.gradio-container .hfb-optics-panel-nav {{
+.gradio-container .vqc-optics-panel-header > .block,
+.gradio-container .vqc-optics-panel-header > .form,
+.gradio-container .vqc-optics-panel-header .block,
+.gradio-container .vqc-optics-panel-header .form {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+}}
+.gradio-container .vqc-optics-panel-header > .block:first-child,
+.gradio-container .vqc-optics-panel-header > .form:first-child {{
+    flex: 0 0 auto !important;
+    width: auto !important;
+}}
+.gradio-container .vqc-optics-panel-nav {{
     flex: 1 1 18rem !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 0.28rem !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    width: auto !important;
 }}
-.gradio-container .hfb-nav-spreadsheet-row {{
+.gradio-container .vqc-optics-panel-nav > .block,
+.gradio-container .vqc-optics-panel-nav > .form {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+}}
+.gradio-container .vqc-optics-panel-nav .vqc-source-tabs-row {{
+    margin: 0 !important;
+}}
+.gradio-container .vqc-nav-spreadsheet-row {{
     display: grid !important;
     grid-template-columns: 4.75rem repeat(5, minmax(4.5rem, 1fr)) !important;
     gap: 0.2rem 0.45rem !important;
     align-items: center !important;
     width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }}
-.gradio-container .hfb-nav-row-label {{
+.gradio-container .vqc-nav-spreadsheet-row > .block,
+.gradio-container .vqc-nav-spreadsheet-row > .form,
+.gradio-container .vqc-nav-spreadsheet-row > .column {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}}
+.gradio-container .vqc-nav-row-label {{
     justify-self: end !important;
+    align-self: center !important;
     text-align: right !important;
-    color: #e0f2f1 !important;
-    font-weight: 600 !important;
+    padding-right: 0.15rem !important;
 }}
-.gradio-container .hfb-optics-logo {{
+.gradio-container .vqc-nav-cell,
+.gradio-container .vqc-nav-cell > .block,
+.gradio-container .vqc-nav-cell > .form {{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    min-height: 1.55rem !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0.1rem 0.2rem !important;
+}}
+.gradio-container .vqc-nav-cell .html-container,
+.gradio-container .vqc-nav-cell .html-container p {{
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: center !important;
+    width: 100% !important;
+}}
+.gradio-container .vqc-nav-cell-empty {{
+    visibility: hidden !important;
+}}
+.gradio-container .vqc-optics-logo {{
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 0.1rem !important;
     min-width: 10.5rem !important;
     padding-right: 0.65rem !important;
-    border-right: 1px solid rgba(29, 107, 92, 0.45) !important;
+    border-right: 1px solid rgba(107, 79, 29, 0.45) !important;
 }}
-.gradio-container .hfb-optics-brand {{
+.gradio-container .vqc-optics-brand {{
     font-size: 0.62rem !important;
     letter-spacing: 0.28em !important;
-    color: {_HFB_LOGO_GOLD} !important;
+    color: {_VQC_LOGO_GOLD} !important;
     font-weight: 700 !important;
 }}
-.gradio-container .hfb-optics-panel-title {{
+.gradio-container .vqc-optics-panel-title {{
     font-size: 1.15rem !important;
     letter-spacing: 0.12em !important;
-    color: #ccfbf1 !important;
+    color: #f5e6c8 !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
+    text-shadow: 0 0 10px rgba(255, 180, 80, 0.35) !important;
 }}
-.gradio-container .hfb-optics-subtitle {{
+.gradio-container .vqc-optics-subtitle {{
     font-size: 0.68rem !important;
     letter-spacing: 0.22em !important;
-    color: #5eead4 !important;
+    color: #9a8458 !important;
 }}
-.gradio-container .hfb-optics-panel .hfb-optics-terminal textarea {{
+.gradio-container .vqc-optics-terminal-caption {{
+    font-size: 0.58rem !important;
+    letter-spacing: 0.18em !important;
+    color: #3dff7a !important;
+    text-shadow: 0 0 8px rgba(61, 255, 122, 0.45) !important;
+    margin-top: 0.1rem !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-optics-terminal textarea,
+.gradio-container .vqc-optics-panel .vqc-optics-terminal input {{
     background: rgba(2, 10, 4, 0.1) !important;
     border: 2px inset #1a4d2a !important;
     color: #33ff66 !important;
+    -webkit-text-fill-color: #33ff66 !important;
     font-family: "Courier New", Courier, monospace !important;
     font-size: 0.78rem !important;
-    min-height: 13.5rem !important;
+    line-height: 1.45 !important;
+    text-shadow: 0 0 6px rgba(51, 255, 102, 0.35) !important;
+    box-shadow:
+        inset 0 0 18px rgba(0, 40, 12, 0.65),
+        0 0 12px rgba(51, 255, 102, 0.08) !important;
+    border-radius: 6px !important;
+    caret-color: #33ff66 !important;
 }}
-.gradio-container .hfb-optics-keypad {{
-    background: linear-gradient(180deg, #0c1814 0%, #061210 100%) !important;
-    border: 2px inset #1d4d3f !important;
+.gradio-container .vqc-optics-panel .vqc-optics-terminal .label-wrap span {{
+    color: #3dff7a !important;
+    letter-spacing: 0.14em !important;
+    text-shadow: 0 0 6px rgba(61, 255, 122, 0.35) !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-optics-terminal-wrap {{
+    background: rgba(2, 10, 4, 0.1) !important;
+    border: 1px solid #1a4d2a !important;
+    border-radius: 10px !important;
+    padding: 0.5rem 0.6rem 0.45rem !important;
+    margin: 0.55rem 0 0.55rem 0 !important;
+}}
+.gradio-container .vqc-animations-nav-row {{
+    margin: 0.35rem 0 0.65rem 0 !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-optics-terminal textarea {{
+    min-height: 13.5rem !important;
+    white-space: pre !important;
+    overflow-x: hidden !important;
+}}
+.gradio-container .hfb-flux-scan {{
+    position: relative !important;
+    width: 100% !important;
+    min-height: 14rem !important;
+    margin: 0.55rem 0 !important;
+    padding: 0.65rem 0.75rem !important;
+    background: linear-gradient(145deg, rgba(8, 6, 28, 0.92) 0%, rgba(18, 10, 42, 0.88) 55%, rgba(6, 16, 36, 0.9) 100%) !important;
+    border: 2px inset #5b21b6 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    box-shadow:
+        inset 0 0 28px rgba(124, 58, 237, 0.18),
+        0 0 18px rgba(34, 211, 238, 0.08) !important;
+}}
+.gradio-container .hfb-flux-aurora {{
+    position: absolute !important;
+    inset: -20% !important;
+    pointer-events: none !important;
+    background:
+        radial-gradient(ellipse 55% 45% at 25% 40%, rgba(124, 58, 237, 0.35) 0%, transparent 68%),
+        radial-gradient(ellipse 50% 40% at 78% 62%, rgba(34, 211, 238, 0.22) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 35% at 52% 18%, rgba(167, 139, 250, 0.2) 0%, transparent 72%) !important;
+    animation: hfb-flux-aurora 11s ease-in-out infinite alternate !important;
+}}
+.gradio-container .hfb-flux-tori {{
+    position: absolute !important;
+    inset: 0 !important;
+    pointer-events: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}}
+.gradio-container .hfb-flux-torus {{
+    position: absolute !important;
+    border-radius: 50% !important;
+    border: 1px solid rgba(167, 139, 250, 0.45) !important;
+    box-shadow:
+        0 0 16px rgba(124, 58, 237, 0.25),
+        inset 0 0 12px rgba(34, 211, 238, 0.12) !important;
+}}
+.gradio-container .hfb-flux-torus-1 {{
+    width: 90% !important;
+    height: 44% !important;
+    animation: hfb-flux-breathe 7s ease-in-out infinite !important;
+}}
+.gradio-container .hfb-flux-torus-2 {{
+    width: 64% !important;
+    height: 30% !important;
+    animation: hfb-flux-breathe 5.2s ease-in-out infinite reverse !important;
+    border-color: rgba(34, 211, 238, 0.38) !important;
+}}
+.gradio-container .hfb-flux-torus-3 {{
+    width: 40% !important;
+    height: 18% !important;
+    animation: hfb-flux-wobble 4.5s ease-in-out infinite !important;
+}}
+.gradio-container .hfb-flux-ribbon {{
+    position: absolute !important;
+    width: 140% !important;
+    height: 18% !important;
+    left: -20% !important;
+    pointer-events: none !important;
+    opacity: 0.55 !important;
+    background: linear-gradient(
+        105deg,
+        transparent 0%,
+        rgba(124, 58, 237, 0.05) 18%,
+        rgba(34, 211, 238, 0.35) 48%,
+        rgba(167, 139, 250, 0.28) 52%,
+        rgba(99, 102, 241, 0.08) 78%,
+        transparent 100%
+    ) !important;
+    filter: blur(1px) !important;
+}}
+.gradio-container .hfb-flux-ribbon-a {{
+    top: 22% !important;
+    transform: rotate(-8deg) !important;
+    animation: hfb-flux-ribbon-drift 6.5s linear infinite !important;
+}}
+.gradio-container .hfb-flux-ribbon-b {{
+    top: 58% !important;
+    animation: hfb-flux-ribbon-drift-b 9s linear infinite reverse !important;
+    opacity: 0.38 !important;
+}}
+.gradio-container .hfb-flux-scanlines {{
+    position: absolute !important;
+    inset: 0 !important;
+    pointer-events: none !important;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 3px,
+        rgba(34, 211, 238, 0.04) 3px,
+        rgba(124, 58, 237, 0.07) 4px
+    ) !important;
+    animation: hfb-flux-scan-drift 3.2s linear infinite !important;
+    mix-blend-mode: screen !important;
+}}
+.gradio-container .hfb-flux-core {{
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 28% !important;
+    height: 28% !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 50% !important;
+    pointer-events: none !important;
+    background: radial-gradient(
+        circle at 40% 35%,
+        rgba(34, 211, 238, 0.55) 0%,
+        rgba(124, 58, 237, 0.35) 38%,
+        rgba(30, 27, 75, 0.05) 72%,
+        transparent 100%
+    ) !important;
+    animation: hfb-flux-core-pulse 2.8s ease-in-out infinite !important;
+    filter: blur(2px) !important;
+}}
+.gradio-container .hfb-flux-body {{
+    position: relative !important;
+    z-index: 2 !important;
+    margin: 0 !important;
+    color: #c4b5fd !important;
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 0.78rem !important;
+    line-height: 1.45 !important;
+    text-shadow:
+        0 0 10px rgba(124, 58, 237, 0.55),
+        0 0 4px rgba(34, 211, 238, 0.35) !important;
+    white-space: pre-wrap !important;
+    animation: hfb-flux-text-glow 5.5s ease-in-out infinite !important;
+}}
+@keyframes hfb-flux-aurora {{
+    0% {{ transform: translate(0%, 0%) scale(1); opacity: 0.85; }}
+    50% {{ transform: translate(3%, -2%) scale(1.06); opacity: 1; }}
+    100% {{ transform: translate(-2%, 3%) scale(0.96); opacity: 0.78; }}
+}}
+@keyframes hfb-flux-breathe {{
+    0%, 100% {{ transform: rotate(-4deg) scaleX(1.12) scaleY(0.92); opacity: 0.55; }}
+    50% {{ transform: rotate(5deg) scaleX(1.22) scaleY(1.05); opacity: 0.95; }}
+}}
+@keyframes hfb-flux-wobble {{
+    0%, 100% {{ transform: rotate(0deg) scale(0.92); }}
+    33% {{ transform: rotate(12deg) scale(1.08); }}
+    66% {{ transform: rotate(-10deg) scale(0.98); }}
+}}
+@keyframes hfb-flux-ribbon-drift {{
+    0% {{ transform: translateX(-18%) rotate(-8deg); }}
+    100% {{ transform: translateX(18%) rotate(-8deg); }}
+}}
+@keyframes hfb-flux-ribbon-drift-b {{
+    0% {{ transform: translateX(-18%) rotate(6deg); }}
+    100% {{ transform: translateX(18%) rotate(6deg); }}
+}}
+@keyframes hfb-flux-scan-drift {{
+    0% {{ transform: translateY(0); }}
+    100% {{ transform: translateY(8px); }}
+}}
+@keyframes hfb-flux-core-pulse {{
+    0%, 100% {{ opacity: 0.45; transform: translate(-50%, -50%) scale(0.85); }}
+    50% {{ opacity: 0.95; transform: translate(-50%, -50%) scale(1.15); }}
+}}
+@keyframes hfb-flux-text-glow {{
+    0%, 100% {{ color: #c4b5fd; filter: brightness(1); }}
+    45% {{ color: #a5f3fc; filter: brightness(1.12); }}
+    55% {{ color: #ddd6fe; filter: brightness(1.05); }}
+}}
+.gradio-container .vqc-optics-keypad {{
+    background: linear-gradient(180deg, #16120c 0%, #0a0806 100%) !important;
+    border: 2px inset #3d3020 !important;
     border-radius: 10px !important;
     padding: 0.42rem 0.38rem 0.48rem !important;
+    margin: 0 0 0.65rem 0 !important;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.55) !important;
 }}
-.gradio-container .hfb-optics-keypad button.hfb-optics-key {{
+.gradio-container .vqc-optics-keypad > .block,
+.gradio-container .vqc-optics-keypad .block {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}}
+.gradio-container .vqc-optics-dpad-group {{
+    margin: 0 0 0.28rem 0 !important;
+    padding: 0 0 0.12rem 0 !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-optics-dpad-row,
+.gradio-container .vqc-optics-panel .vqc-optics-prog-row {{
+    gap: 0.2rem !important;
+    margin: 0 0 0.2rem 0 !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+}}
+.gradio-container .vqc-optics-keypad button.vqc-optics-key,
+.gradio-container .vqc-optics-keypad button.vqc-optics-key span {{
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 1.44rem !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+}}
+.gradio-container .vqc-optics-keypad button.vqc-optics-key {{
     flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
     min-height: 3rem !important;
+    height: 3rem !important;
+    max-height: 3rem !important;
+    aspect-ratio: auto !important;
     background: #000000 !important;
     border: none !important;
     border-radius: 8px !important;
     color: #ffffff !important;
-    font-family: "Courier New", Courier, monospace !important;
+    -webkit-text-fill-color: #ffffff !important;
+    letter-spacing: 0.03em !important;
+    padding: 0.28rem 0.1rem !important;
+    box-shadow: none !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-optics-dpad-row button.vqc-optics-key-dpad,
+.gradio-container .vqc-optics-panel .vqc-optics-dpad-row button.vqc-optics-key-dpad span {{
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 1.44rem !important;
     font-weight: 700 !important;
+    line-height: 1 !important;
 }}
-.gradio-container button.hfb-optics-key-home,
-.gradio-container button.hfb-optics-key-home span {{
-    color: {_HFB_MATRIX_GREEN} !important;
-    background: {_HFB_HOME_KEY_BG} !important;
-}}
-.gradio-container button.hfb-optics-key-defined:not(.active),
-.gradio-container button.hfb-optics-key-defined:not(.active) span {{
-    color: {_HFB_MATRIX_GREEN} !important;
-}}
-.gradio-container button.hfb-optics-key.active {{
-    background: {_HFB_MATRIX_GREEN} !important;
+.gradio-container .vqc-optics-panel .vqc-optics-dpad-row button.vqc-optics-key-dpad:active,
+.gradio-container .vqc-optics-panel .vqc-optics-dpad-row button.vqc-optics-key-dpad:active span {{
+    background: {_VQC_MATRIX_GREEN} !important;
     color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    box-shadow: 0 0 12px rgba(51, 255, 102, 0.45) !important;
 }}
-.gradio-container .hfb-optics-dial-wrap {{
+.gradio-container .vqc-optics-panel button.vqc-optics-key-clear {{
+    text-transform: lowercase !important;
+    letter-spacing: 0.06em !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key-home,
+.gradio-container .vqc-optics-panel button.vqc-optics-key-home:hover {{
+    background: {_VQC_HOME_KEY_BG} !important;
+    box-shadow: none !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key-home,
+.gradio-container .vqc-optics-panel button.vqc-optics-key-home:hover,
+.gradio-container .vqc-optics-panel button.vqc-optics-key-home span {{
+    color: {_VQC_MATRIX_GREEN} !important;
+    -webkit-text-fill-color: {_VQC_MATRIX_GREEN} !important;
+    font-size: 1.44rem !important;
+    font-weight: 700 !important;
+    text-shadow: 0 0 6px rgba(51, 255, 102, 0.35) !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key-home:hover {{
+    background: #141414 !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key-defined:not(.active),
+.gradio-container .vqc-optics-panel button.vqc-optics-key-defined:not(.active) span {{
+    color: {_VQC_MATRIX_GREEN} !important;
+    -webkit-text-fill-color: {_VQC_MATRIX_GREEN} !important;
+    text-shadow: 0 0 6px rgba(51, 255, 102, 0.35) !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key-defined:not(.active):hover,
+.gradio-container .vqc-optics-panel button.vqc-optics-key-defined:not(.active):hover span {{
+    color: #7dff9a !important;
+    -webkit-text-fill-color: #7dff9a !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key:not(.active):not(.vqc-optics-key-home):not(.vqc-optics-key-defined):hover {{
+    background: #141414 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key-defined:not(.active):hover {{
+    background: #141414 !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key.active,
+.gradio-container .vqc-optics-panel button.vqc-optics-key.active:hover {{
+    background: {_VQC_MATRIX_GREEN} !important;
+    box-shadow: 0 0 12px rgba(51, 255, 102, 0.45) !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-optics-key.active,
+.gradio-container .vqc-optics-panel button.vqc-optics-key.active:hover,
+.gradio-container .vqc-optics-panel button.vqc-optics-key.active span {{
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    text-shadow: none !important;
+    -webkit-text-stroke: none !important;
+}}
+.gradio-container .vqc-optics-panel .label-wrap span,
+.gradio-container .vqc-optics-panel label span {{
+    color: #e8d4a8 !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    font-weight: 700 !important;
+}}
+.gradio-container .vqc-optics-panel .info {{
+    color: #9a8458 !important;
+    font-size: 0.72rem !important;
+    font-style: italic !important;
+}}
+.gradio-container .vqc-optics-panel input[type="text"],
+.gradio-container .vqc-optics-panel textarea {{
+    background: #120c06 !important;
+    border: 2px inset #5c4a1f !important;
+    color: #ffb347 !important;
+    font-family: "Courier New", Courier, monospace !important;
+    border-radius: 6px !important;
+    box-shadow: inset 0 0 10px rgba(255, 140, 40, 0.12) !important;
+}}
+.gradio-container .vqc-optics-panel input[type="number"] {{
+    background: #120c06 !important;
+    border: 2px inset #5c4a1f !important;
+    color: #ffb347 !important;
+    font-family: "Courier New", Courier, monospace !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    border-radius: 4px !important;
+    box-shadow: inset 0 0 12px rgba(255, 140, 40, 0.18) !important;
+    min-width: 4.2rem !important;
+}}
+.gradio-container .vqc-optics-panel input[type="range"] {{
+    height: 6px !important;
+    background: linear-gradient(90deg, #1a1208, #3d2e14, #1a1208) !important;
+    border: 1px solid #5c4a1f !important;
+    border-radius: 999px !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6) !important;
+}}
+.gradio-container .vqc-optics-panel input[type="range"]::-webkit-slider-thumb {{
+    -webkit-appearance: none !important;
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 50% !important;
+    background: radial-gradient(circle at 32% 28%, #fff2cc 0%, #c9a227 38%, #5c4212 72%, #2a1f08 100%) !important;
+    border: 2px solid #1a1208 !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.55), inset 0 -2px 4px rgba(0, 0, 0, 0.35) !important;
+    cursor: pointer !important;
+}}
+.gradio-container .vqc-optics-panel input[type="range"]::-moz-range-thumb {{
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 50% !important;
+    background: radial-gradient(circle at 32% 28%, #fff2cc 0%, #c9a227 38%, #5c4212 72%, #2a1f08 100%) !important;
+    border: 2px solid #1a1208 !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.55) !important;
+    cursor: pointer !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-optics-dial-wrap {{
     background: rgba(0, 0, 0, 0.22) !important;
-    border: 1px solid #1d4d3f !important;
+    border: 1px solid #4a3818 !important;
     border-radius: 10px !important;
     padding: 0.55rem 0.65rem 0.45rem !important;
+    margin: 0 !important;
 }}
-.gradio-container .hfb-gallery-wrap {{
+.gradio-container .vqc-optics-panel .vqc-optics-tune-row {{
+    gap: 0.65rem !important;
+    margin-bottom: 0.55rem !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-optics-dial-row {{
+    gap: 0.65rem !important;
+    align-items: stretch !important;
+}}
+.gradio-container .vqc-optics-panel fieldset {{
+    background: rgba(0, 0, 0, 0.18) !important;
+    border: 1px solid #4a3818 !important;
+    border-radius: 10px !important;
+    padding: 0.45rem 0.55rem !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-band-switch button {{
+    border: 1px solid #6b4f1d !important;
+    background: #1a1208 !important;
+    color: #c9a227 !important;
+    border-radius: 6px !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.05em !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45) !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-band-switch button.selected,
+.gradio-container .vqc-optics-panel .vqc-band-switch button[aria-checked="true"] {{
+    background: linear-gradient(180deg, #8b6914 0%, #4a3818 100%) !important;
+    color: #fff2cc !important;
+    box-shadow: 0 0 10px rgba(255, 160, 60, 0.35) !important;
+}}
+.gradio-container .vqc-optics-presets-label {{
+    color: #c9a227 !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    margin: 0.45rem 0 0.35rem 0 !important;
+    text-align: center !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-receiver-preset {{
+    background: linear-gradient(180deg, #3d2e14 0%, #1f1608 100%) !important;
+    border: 2px solid #6b4f1d !important;
+    color: #f5e6c8 !important;
+    border-radius: 8px !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.04em !important;
+    box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.15), 0 2px 4px rgba(0, 0, 0, 0.4) !important;
+}}
+.gradio-container .vqc-optics-panel button.vqc-receiver-preset:hover {{
+    background: linear-gradient(180deg, #6b4f1d 0%, #3d2e14 100%) !important;
+    color: #fff8e8 !important;
+}}
+.gradio-container .vqc-optics-panel .vqc-slm-toggle label {{
+    color: #c9a227 !important;
+    font-size: 0.76rem !important;
+}}
+.gradio-container .markdown blockquote {{
+    border-left-color: rgba(255, 180, 80, 0.5) !important;
+    background: transparent !important;
+}}
+.gradio-container .accordion,
+.gradio-container details,
+.gradio-container summary {{
+    background-color: {_VQC_FIELD_FILL} !important;
+    color: #e8e0f8 !important;
+    border-radius: 10px;
+}}
+.gradio-container .image-container img,
+.gradio-container .gr-image img,
+.gradio-container video,
+.gradio-container .plot-container {{
+    background-color: transparent !important;
+    opacity: 1 !important;
+}}
+.gradio-container button,
+.gradio-container .gr-button {{
+    opacity: 1 !important;
+}}
+.gradio-container input[type="range"] {{
+    opacity: 1 !important;
+}}
+.gradio-container .vqc-full-width {{
+    width: 100% !important;
+}}
+.gradio-container .main,
+.gradio-container .wrap {{
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+}}
+.gradio-container .contain {{
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+}}
+.gradio-container .vqc-animation-panel,
+.gradio-container .vqc-figure-panel,
+.gradio-container .vqc-plot3d-panel {{
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+}}
+.gradio-container .vqc-animation-panel video,
+.gradio-container .vqc-animation-panel .image-container,
+.gradio-container .vqc-animation-panel img,
+.gradio-container .vqc-figure-panel .image-container,
+.gradio-container .vqc-figure-panel img {{
+    width: 100% !important;
+    max-width: 100% !important;
+    object-fit: contain;
+}}
+.gradio-container .vqc-plot3d-panel .plot-container {{
+    width: 100% !important;
+    min-height: 360px;
+}}
+.gradio-container .gr-video .empty,
+.gradio-container .gr-image .empty,
+.gradio-container .gr-image .icon-wrap {{
+    min-height: 80px !important;
+    background: transparent !important;
+}}
+.gradio-container .vqc-gallery-wrap {{
     display: grid !important;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
     gap: 0.75rem !important;
     width: 100% !important;
 }}
-.gradio-container .hfb-gallery-figure img {{
+.gradio-container .vqc-gallery-figure img {{
     width: 100% !important;
     border-radius: 8px !important;
-    background: rgba(6, 18, 16, 0.35) !important;
+    background: rgba(10, 8, 24, 0.35) !important;
 }}
-.gradio-container .hfb-gallery-figure figcaption {{
-    color: #99f6e4 !important;
+.gradio-container .vqc-gallery-figure figcaption {{
+    color: #c9b8ff !important;
     font-size: 0.82rem !important;
     text-align: center !important;
     margin-top: 0.35rem !important;
-}}
-.gradio-container button.hfb-panel-minimize {{
-    border: 1px solid {_HFB_TAB_GREEN_BORDER} !important;
-    background: {_HFB_TAB_GREEN_BG} !important;
-    color: {_HFB_TAB_GREEN_TEXT} !important;
-}}
-.gradio-container .hfb-links-panel {{
-    margin: 0 0 0.35rem 0 !important;
-    padding: 0.65rem 0.85rem !important;
-}}
-.gradio-container .hfb-figure-panel img {{
-    width: 100% !important;
-    object-fit: contain !important;
 }}
 footer {{ visibility: hidden; }}
 """
@@ -929,28 +1976,17 @@ def run_flux(
     progress: gr.Progress = gr.Progress(track_tqdm=False),
 ) -> tuple[str, str | None, str | None]:
     params = _run_params_from_ui(
-        bubble_radius,
-        wall_width,
-        defect_amplitude,
-        circulation,
-        sound_speed,
-        defect_profile,
-        use_3d_torus,
-        hopf_index,
-        major_radius,
-        minor_radius,
+        bubble_radius, wall_width, defect_amplitude, circulation, sound_speed,
+        defect_profile, use_3d_torus, hopf_index, major_radius, minor_radius,
     )
-    if is_hf_space():
-        include_3d = include_3d and True
     try:
         progress(0.1, desc="Building flux bubble metric…")
-        metrics, panel_path, path_3d = run_flux_bubble_demo(**params, include_3d=include_3d)
+        metrics, panel_path, path_3d = run_flux_bubble_demo(**params, include_3d=bool(include_3d))
         progress(1.0, desc="Done")
         return metrics, panel_path, path_3d
     except Exception as exc:
         logger.exception("run_flux failed")
-        err = f"Error: {exc}\n\n{traceback.format_exc()}"
-        return err, None, None
+        return f"Error: {exc}\n\n{traceback.format_exc()}", None, None
 
 
 def run_warp(
@@ -970,16 +2006,8 @@ def run_warp(
     progress: gr.Progress = gr.Progress(track_tqdm=False),
 ) -> tuple[str, str | None]:
     params = _run_params_from_ui(
-        bubble_radius,
-        wall_width,
-        defect_amplitude,
-        circulation,
-        sound_speed,
-        defect_profile,
-        use_3d_torus,
-        hopf_index,
-        major_radius,
-        minor_radius,
+        bubble_radius, wall_width, defect_amplitude, circulation, sound_speed,
+        defect_profile, use_3d_torus, hopf_index, major_radius, minor_radius,
     )
     try:
         progress(0.1, desc="Comparing warp profiles…")
@@ -1015,6 +2043,21 @@ def run_sweep(
         return f"Error: {exc}\n\n{traceback.format_exc()}"
 
 
+def _gallery_grid_html() -> str:
+    panels = (
+        ("Flux bubble 4-panel", GALLERY_FLUX_URL),
+        ("3D torus surface", GALLERY_3D_URL),
+        ("Warp compare", GALLERY_WARP_URL),
+    )
+    imgs = "".join(
+        f'<figure class="vqc-gallery-figure">'
+        f'<img src="{url}" alt="{title}" loading="lazy" />'
+        f'<figcaption>{title}</figcaption></figure>'
+        for title, url in panels
+    )
+    return f'<div class="vqc-gallery-wrap">{imgs}</div>'
+
+
 def build_app() -> gr.Blocks:
     on_hf = is_hf_space()
     viz3d_info = (
@@ -1026,73 +2069,96 @@ def build_app() -> gr.Blocks:
     with gr.Blocks(
         title="Hopf Flux Bubble — Live Demo",
         analytics_enabled=False,
-        theme=_build_hfb_theme(),
+        theme=_build_vqc_theme(),
         head=WALLPAPER_HEAD,
         css=HFB_CSS,
         fill_width=True,
     ) as demo:
         current_page = gr.State("demo")
-        caveats_open = gr.State(False)
-
-        with gr.Column(visible=False, elem_classes=["hfb-links-panel"]) as panel_caveats:
-            with gr.Row():
-                gr.Markdown("### Caveats — effective analog only")
-                caveats_minimize_btn = gr.Button("▲", elem_classes=["hfb-panel-minimize"], scale=0)
-            gr.Markdown(CAVEATS_MD)
-
+        newhere_open = gr.State(False)
+        claims_open = gr.State(False)
+        with gr.Column(visible=False, elem_classes=["vqc-links-panel"]) as panel_claims:
+            with gr.Row(elem_classes=["vqc-panel-header-row"]):
+                gr.Markdown("### How this maps to VQC claims")
+                claims_minimize_btn = gr.Button(
+                    "▲",
+                    elem_classes=["vqc-panel-minimize"],
+                    scale=0,
+                    variant="secondary",
+                )
+            gr.Markdown(VQC_CLAIMS_MD)
+        with gr.Column(visible=False, elem_classes=["vqc-links-panel"]) as panel_newhere:
+            with gr.Row(elem_classes=["vqc-panel-header-row"]):
+                gr.Markdown("### New here? 60-second guide (effective analog metric)")
+                newhere_minimize_btn = gr.Button(
+                    "▲",
+                    elem_classes=["vqc-panel-minimize"],
+                    scale=0,
+                    variant="secondary",
+                )
+            gr.Markdown(ONBOARDING_MD)
         with gr.Column(visible=True) as page_demo:
-            with gr.Group(elem_classes=["hfb-optics-panel"]):
-                with gr.Row(elem_classes=["hfb-optics-panel-header"]):
+            with gr.Group(elem_classes=["vqc-optics-panel"]):
+                with gr.Row(elem_classes=["vqc-optics-panel-header"]):
                     gr.HTML(OPTICS_LOGO_HTML)
-                    with gr.Column(elem_classes=["hfb-optics-panel-nav"], scale=1):
-                        with gr.Row(elem_classes=["hfb-nav-spreadsheet-row"]):
-                            gr.HTML('<span class="hfb-nav-row-label">Source:</span>')
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
+                    with gr.Column(elem_classes=["vqc-optics-panel-nav"], scale=1):
+                        with gr.Row(elem_classes=["vqc-nav-spreadsheet-row"]):
+                            gr.HTML('<span class="vqc-source-label vqc-nav-row-label">Source:</span>')
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
                                 tab_demo_btn = gr.Button(
                                     "Live Demo",
-                                    elem_classes=["hfb-source-tab", "active"],
+                                    elem_classes=["vqc-source-tab", "active"],
                                     interactive=False,
                                     scale=0,
                                     variant="secondary",
                                 )
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
                                 tab_gallery_btn = gr.Button(
                                     "Gallery",
-                                    elem_classes=["hfb-source-tab"],
+                                    elem_classes=["vqc-source-tab"],
                                     scale=0,
                                     variant="secondary",
                                 )
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
-                                tab_caveats_btn = gr.Button(
-                                    "Caveats",
-                                    elem_classes=["hfb-source-tab"],
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
+                                tab_claims_btn = gr.Button(
+                                    "Claims",
+                                    elem_classes=["vqc-source-tab"],
                                     scale=0,
                                     variant="secondary",
                                 )
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
-                                gr.HTML('<span class="hfb-nav-cell-empty" aria-hidden="true">&nbsp;</span>')
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
-                                gr.HTML('<span class="hfb-nav-cell-empty" aria-hidden="true">&nbsp;</span>')
-                        with gr.Row(elem_classes=["hfb-nav-spreadsheet-row"]):
-                            gr.HTML('<span class="hfb-nav-row-label">Links:</span>')
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
+                                tab_newhere_btn = gr.Button(
+                                    "New here?",
+                                    elem_classes=["vqc-source-tab"],
+                                    scale=0,
+                                    variant="secondary",
+                                )
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
+                                gr.HTML('<span class="vqc-nav-cell-empty" aria-hidden="true">&nbsp;</span>')
+                        with gr.Row(elem_classes=["vqc-nav-spreadsheet-row"]):
+                            gr.HTML('<span class="vqc-source-label vqc-nav-row-label">Links:</span>')
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
                                 gr.HTML(_external_tab_html("GitHub", GITHUB_URL, "github"))
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
                                 gr.HTML(_external_tab_html("vqc_proto", VQC_URL, "vqc"))
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
-                                gr.HTML(_external_tab_html("CLI README", f"{GITHUB_URL}#quick-start", "cli"))
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
-                                gr.HTML('<span class="hfb-nav-cell-empty" aria-hidden="true">&nbsp;</span>')
-                            with gr.Column(elem_classes=["hfb-nav-cell"], scale=1, min_width=72):
-                                gr.HTML('<span class="hfb-nav-cell-empty" aria-hidden="true">&nbsp;</span>')
-
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
+                                gr.HTML(_external_tab_html("qvpic", QVPIC_URL, "qvpic"))
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
+                                gr.HTML('<span class="vqc-nav-cell-empty" aria-hidden="true">&nbsp;</span>')
+                            with gr.Column(elem_classes=["vqc-nav-cell"], scale=1, min_width=72):
+                                gr.HTML('<span class="vqc-nav-cell-empty" aria-hidden="true">&nbsp;</span>')
                 optics_terminal = gr.Textbox(
                     label="Matrix status display — selection menu · d-pad nav",
-                    value=_optics_terminal_menu(0),
-                    lines=12,
-                    max_lines=16,
+                    value="",
+                    lines=14,
+                    max_lines=24,
                     interactive=False,
-                    elem_classes=["hfb-optics-terminal-wrap", "hfb-optics-terminal"],
+                    elem_classes=["vqc-optics-terminal-wrap", "vqc-optics-terminal"],
+                )
+                term_flux_helix_scan = gr.HTML(
+                    FLUX_HELIX_SCANNER_HTML,
+                    visible=False,
+                    elem_classes=["hfb-flux-scan-host"],
                 )
                 term_active_key = gr.State("")
                 term_ui_state = gr.State(_default_term_ui_state())
@@ -1106,8 +2172,8 @@ def build_app() -> gr.Blocks:
                     "clear": "clear",
                 }
 
-                with gr.Column(elem_classes=["hfb-optics-keypad"]):
-                    with gr.Row(elem_classes=["hfb-optics-dpad-row"], equal_height=True):
+                with gr.Column(elem_classes=["vqc-optics-keypad"]):
+                    with gr.Row(elem_classes=["vqc-optics-dpad-row"], equal_height=True):
                         for nav_key in TERM_NAV_KEYS:
                             term_all_btns[nav_key] = gr.Button(
                                 _dpad_row_labels[nav_key],
@@ -1115,7 +2181,7 @@ def build_app() -> gr.Blocks:
                                 scale=1,
                                 variant="secondary",
                             )
-                    with gr.Row(elem_classes=["hfb-optics-prog-row"], equal_height=True):
+                    with gr.Row(elem_classes=["vqc-optics-prog-row"], equal_height=True):
                         for index in range(1, 13):
                             key_id = _term_key_id(index)
                             term_all_btns[key_id] = gr.Button(
@@ -1124,7 +2190,7 @@ def build_app() -> gr.Blocks:
                                 scale=1,
                                 variant="secondary",
                             )
-                    with gr.Row(elem_classes=["hfb-optics-prog-row"], equal_height=True):
+                    with gr.Row(elem_classes=["vqc-optics-prog-row"], equal_height=True):
                         for index in range(13, 25):
                             key_id = _term_key_id(index)
                             term_all_btns[key_id] = gr.Button(
@@ -1133,191 +2199,158 @@ def build_app() -> gr.Blocks:
                                 scale=1,
                                 variant="secondary",
                             )
-
                 term_keypad_outputs = [
                     optics_terminal,
+                    term_flux_helix_scan,
                     *[term_all_btns[key_id] for key_id in TERM_KEYPAD_CONTROL_ORDER],
                     term_active_key,
                     term_ui_state,
                 ]
+                term_cancels: list = []
 
-                with gr.Row(elem_classes=["hfb-optics-tune-row"]):
+                def _bind_term_event(btn: gr.Button, fn, *, inputs: list) -> None:
+                    term_cancels.append(
+                        btn.click(
+                            fn,
+                            inputs=inputs,
+                            outputs=term_keypad_outputs,
+                            cancels=term_cancels,
+                        )
+                    )
+
+                with gr.Row(elem_classes=["vqc-optics-tune-row"]):
                     bubble_radius = gr.Slider(
-                        0.5,
-                        2.0,
-                        value=_DEFAULTS["bubble_radius"],
-                        step=0.05,
-                        label="Bubble radius",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        0.5, 2.0, value=_DEFAULTS["bubble_radius"], step=0.05,
+                        label="Bubble radius", elem_classes=["vqc-optics-dial-wrap"],
                     )
                     wall_width = gr.Slider(
-                        0.05,
-                        0.6,
-                        value=_DEFAULTS["wall_width"],
-                        step=0.01,
-                        label="Wall width",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        0.05, 0.6, value=_DEFAULTS["wall_width"], step=0.01,
+                        label="Wall width", elem_classes=["vqc-optics-dial-wrap"],
                     )
                     circulation = gr.Slider(
-                        0.05,
-                        1.0,
-                        value=_DEFAULTS["circulation"],
-                        step=0.05,
-                        label="Circulation",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        0.05, 1.0, value=_DEFAULTS["circulation"], step=0.05,
+                        label="Circulation", elem_classes=["vqc-optics-dial-wrap"],
                     )
                     defect_amplitude = gr.Slider(
-                        0.2,
-                        2.0,
-                        value=_DEFAULTS["defect_amplitude"],
-                        step=0.1,
-                        label="Defect amplitude",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        0.2, 2.0, value=_DEFAULTS["defect_amplitude"], step=0.1,
+                        label="Defect amplitude", elem_classes=["vqc-optics-dial-wrap"],
                     )
-
-                with gr.Row(elem_classes=["hfb-optics-tune-row"]):
+                with gr.Row(elem_classes=["vqc-optics-tune-row"]):
                     sound_speed = gr.Slider(
-                        0.5,
-                        2.0,
-                        value=_DEFAULTS["sound_speed"],
-                        step=0.1,
-                        label="Sound speed c₀",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        0.5, 2.0, value=_DEFAULTS["sound_speed"], step=0.1,
+                        label="Sound speed c₀", elem_classes=["vqc-optics-dial-wrap"],
                     )
                     major_radius = gr.Slider(
-                        0.4,
-                        2.0,
-                        value=_DEFAULTS["major_radius"],
-                        step=0.05,
-                        label="Hopf major radius",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        0.4, 2.0, value=_DEFAULTS["major_radius"], step=0.05,
+                        label="Hopf major radius", elem_classes=["vqc-optics-dial-wrap"],
                     )
                     minor_radius = gr.Slider(
-                        0.1,
-                        0.8,
-                        value=_DEFAULTS["minor_radius"],
-                        step=0.02,
-                        label="Hopf minor radius",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        0.1, 0.8, value=_DEFAULTS["minor_radius"], step=0.02,
+                        label="Hopf minor radius", elem_classes=["vqc-optics-dial-wrap"],
                     )
                     hopf_index = gr.Slider(
-                        1,
-                        3,
-                        value=_DEFAULTS["hopf_index"],
-                        step=1,
-                        label="Hopf index",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        1, 3, value=_DEFAULTS["hopf_index"], step=1,
+                        label="Hopf index", elem_classes=["vqc-optics-dial-wrap"],
                     )
-
-                with gr.Row(elem_classes=["hfb-optics-tune-row"]):
+                with gr.Row(elem_classes=["vqc-optics-tune-row"]):
                     defect_profile = gr.Dropdown(
                         choices=["toroidal_bubble_wall", "exponential_ring"],
                         value=_DEFAULTS["defect_profile"],
-                        label="Defect profile",
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        label="Defect profile", elem_classes=["vqc-optics-dial-wrap"],
                     )
                     use_3d_torus = gr.Checkbox(
                         label="3D torus slice (hopf texture)",
                         value=_DEFAULTS["use_3d_torus"],
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        elem_classes=["vqc-optics-dial-wrap"],
                     )
                     include_3d = gr.Checkbox(
                         label="Include 3D surface plot",
                         value=False,
                         info=viz3d_info,
-                        elem_classes=["hfb-optics-dial-wrap"],
+                        elem_classes=["vqc-optics-dial-wrap"],
                     )
-
-                with gr.Row(elem_classes=["hfb-optics-tune-row"]):
-                    vs = gr.Slider(0.05, 0.8, value=0.3, step=0.05, label="Alcubierre vs", elem_classes=["hfb-optics-dial-wrap"])
-                    rs = gr.Slider(0.2, 2.0, value=1.0, step=0.1, label="Warp rs", elem_classes=["hfb-optics-dial-wrap"])
-                    sigma = gr.Slider(0.05, 0.8, value=0.25, step=0.05, label="Warp σ", elem_classes=["hfb-optics-dial-wrap"])
-
-            term_all_btns["clear"].click(
+                with gr.Row(elem_classes=["vqc-optics-tune-row"]):
+                    vs = gr.Slider(0.05, 0.8, value=0.3, step=0.05, label="Alcubierre vs", elem_classes=["vqc-optics-dial-wrap"])
+                    rs = gr.Slider(0.2, 2.0, value=1.0, step=0.1, label="Warp rs", elem_classes=["vqc-optics-dial-wrap"])
+                    sigma = gr.Slider(0.05, 0.8, value=0.25, step=0.05, label="Warp σ", elem_classes=["vqc-optics-dial-wrap"])
+            helix_key = _term_key_id(8)
+            _bind_term_event(
+                term_all_btns[helix_key],
+                _make_activate_oam_helix_scan(helix_key),
+                inputs=[term_ui_state],
+            )
+            _bind_term_event(
+                term_all_btns["clear"],
                 _make_term_clear_click("clear"),
                 inputs=[optics_terminal, term_ui_state],
-                outputs=term_keypad_outputs,
             )
             for hold_key in TERM_DPAD_HOLD_KEYS:
-                term_all_btns[hold_key].click(
+                _bind_term_event(
+                    term_all_btns[hold_key],
                     _make_term_dpad_click(hold_key),
                     inputs=[optics_terminal, term_ui_state],
-                    outputs=term_keypad_outputs,
                 )
-            term_all_btns[TERM_KEYPAD_HOME_KEY].click(
+            _bind_term_event(
+                term_all_btns[TERM_KEYPAD_HOME_KEY],
                 _make_term_home_momentary(),
                 inputs=[term_active_key, term_ui_state],
-                outputs=term_keypad_outputs,
             )
             for index in range(1, TERM_KEYPAD_COUNT + 1):
                 key_id = _term_key_id(index)
-                if index == 1:
+                if index == 1 or index == 8:
                     continue
                 if index in TERM_KEYPAD_DEFINED:
                     action = TERM_KEYPAD_DEFINED[index]
-                    term_all_btns[key_id].click(
+                    _bind_term_event(
+                        term_all_btns[key_id],
                         _make_term_stream_click(
                             key_id,
                             TERM_KEYPAD_STREAMERS[action],
                             menu_action=action,
                         ),
                         inputs=[term_ui_state],
-                        outputs=term_keypad_outputs,
                     )
                 else:
-                    term_all_btns[key_id].click(
+                    _bind_term_event(
+                        term_all_btns[key_id],
                         _make_term_latch_click(key_id),
                         inputs=[optics_terminal, term_ui_state],
-                        outputs=term_keypad_outputs,
                     )
 
+            flux_btn = gr.Button("Run flux bubble", variant="primary", elem_classes=["vqc-full-width"])
+            warp_btn = gr.Button("Run warp compare", variant="secondary", elem_classes=["vqc-full-width"])
+            sweep_btn = gr.Button("Run stability sweep", variant="secondary", elem_classes=["vqc-full-width"])
             bubble_inputs = [
-                bubble_radius,
-                wall_width,
-                defect_amplitude,
-                circulation,
-                sound_speed,
-                defect_profile,
-                use_3d_torus,
-                hopf_index,
-                major_radius,
-                minor_radius,
+                bubble_radius, wall_width, defect_amplitude, circulation, sound_speed,
+                defect_profile, use_3d_torus, hopf_index, major_radius, minor_radius,
             ]
-            flux_btn = gr.Button("Run flux bubble", variant="primary")
-            warp_btn = gr.Button("Run warp compare", variant="secondary")
-            sweep_btn = gr.Button("Run stability sweep", variant="secondary")
-
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1):
                     metrics_out = gr.Textbox(label="Stability / warp metrics", lines=14)
                 with gr.Column(scale=2):
-                    flux_figure = gr.Image(label="Flux bubble 4-panel", type="filepath", elem_classes=["hfb-figure-panel"])
-            figure_3d = gr.Image(label="3D torus surface (optional)", type="filepath", elem_classes=["hfb-figure-panel"])
-            warp_figure = gr.Image(label="Warp comparison", type="filepath", elem_classes=["hfb-figure-panel"])
-
-            flux_btn.click(
-                run_flux,
-                inputs=[*bubble_inputs, include_3d],
-                outputs=[metrics_out, flux_figure, figure_3d],
-            )
-            warp_btn.click(
-                run_warp,
-                inputs=[*bubble_inputs, vs, rs, sigma],
-                outputs=[metrics_out, warp_figure],
-            )
+                    flux_figure = gr.Image(label="Flux bubble 4-panel", type="filepath", elem_classes=["vqc-figure-panel"])
+            figure_3d = gr.Image(label="3D torus surface (optional)", type="filepath", elem_classes=["vqc-figure-panel"])
+            warp_figure = gr.Image(label="Warp comparison", type="filepath", elem_classes=["vqc-figure-panel"])
+            flux_btn.click(run_flux, inputs=[*bubble_inputs, include_3d], outputs=[metrics_out, flux_figure, figure_3d])
+            warp_btn.click(run_warp, inputs=[*bubble_inputs, vs, rs, sigma], outputs=[metrics_out, warp_figure])
             sweep_btn.click(
                 run_sweep,
                 inputs=[defect_profile, use_3d_torus, hopf_index, major_radius, minor_radius],
                 outputs=[metrics_out],
             )
 
-        with gr.Column(visible=False, elem_classes=["hfb-gallery-page"]) as page_gallery:
-            with gr.Row(elem_classes=["hfb-source-tabs-row"]):
-                gr.HTML('<span class="hfb-nav-row-label">Source:</span>')
-                gal_tab_demo_btn = gr.Button("Live Demo", elem_classes=["hfb-source-tab"], scale=0, variant="secondary")
+        with gr.Column(visible=False, elem_classes=["vqc-gallery-page"]) as page_gallery:
+            with gr.Row(elem_classes=["vqc-source-tabs-row", "vqc-animations-nav-row"]):
+                gr.HTML('<span class="vqc-source-label">Source:</span>')
+                gal_tab_demo_btn = gr.Button(
+                    "Live Demo",
+                    elem_classes=["vqc-source-tab"],
+                    scale=0,
+                    variant="secondary",
+                )
                 gal_tab_gallery_btn = gr.Button(
                     "Gallery",
-                    elem_classes=["hfb-source-tab", "active"],
+                    elem_classes=["vqc-source-tab", "active"],
                     interactive=False,
                     scale=0,
                     variant="secondary",
@@ -1325,20 +2358,24 @@ def build_app() -> gr.Blocks:
             gr.Markdown("## Gallery — reference outputs from `hfb-demo`")
             gr.HTML(_gallery_grid_html())
             gr.Markdown(
-                f"[Flux bubble]({_GALLERY_FLUX_URL}) · "
-                f"[3D surface]({_GALLERY_3D_URL}) · "
-                f"[Warp compare]({_GALLERY_WARP_URL})"
+                f"[Flux bubble]({GALLERY_FLUX_URL}) · "
+                f"[3D surface]({GALLERY_3D_URL}) · "
+                f"[Warp compare]({GALLERY_WARP_URL})"
             )
 
-        caveats_outputs = [panel_caveats, tab_caveats_btn, caveats_open]
+        newhere_outputs = [panel_newhere, tab_newhere_btn, newhere_open, panel_claims, tab_claims_btn, claims_open]
+        claims_outputs = [panel_claims, tab_claims_btn, claims_open, panel_newhere, tab_newhere_btn, newhere_open]
         nav_outputs = [
             page_demo,
             page_gallery,
             tab_demo_btn,
             tab_gallery_btn,
-            panel_caveats,
-            tab_caveats_btn,
-            caveats_open,
+            panel_newhere,
+            tab_newhere_btn,
+            newhere_open,
+            panel_claims,
+            tab_claims_btn,
+            claims_open,
             gal_tab_demo_btn,
             gal_tab_gallery_btn,
             current_page,
@@ -1347,9 +2384,11 @@ def build_app() -> gr.Blocks:
         tab_gallery_btn.click(lambda: _nav_to_page("gallery"), outputs=nav_outputs)
         gal_tab_demo_btn.click(lambda: _nav_to_page("demo"), outputs=nav_outputs)
         gal_tab_gallery_btn.click(lambda: _nav_to_page("gallery"), outputs=nav_outputs)
-        tab_caveats_btn.click(_toggle_caveats, inputs=[caveats_open], outputs=caveats_outputs)
-        caveats_minimize_btn.click(_minimize_caveats, outputs=caveats_outputs[:3])
-        demo.load(_term_boot_home, outputs=term_keypad_outputs)
+        tab_newhere_btn.click(_toggle_newhere, inputs=[newhere_open], outputs=newhere_outputs)
+        tab_claims_btn.click(_toggle_claims, inputs=[claims_open], outputs=claims_outputs)
+        newhere_minimize_btn.click(_minimize_newhere, outputs=newhere_outputs[:3])
+        claims_minimize_btn.click(_minimize_claims, outputs=claims_outputs[:3])
+        demo.load(_stream_term_boot, outputs=term_keypad_outputs)
 
         gr.Markdown(
             f"MIT license · effective analog exploration only · "
@@ -1363,6 +2402,7 @@ demo = build_app()
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
+
     try:
         demo.get_api_info()
         logger.info("Gradio API info check passed")
@@ -1371,6 +2411,7 @@ def main() -> None:
 
     on_hf = bool(os.environ.get("SPACE_ID"))
     port = int(os.environ.get("GRADIO_SERVER_PORT", "7860"))
+
     launch_kwargs: dict = {
         "server_name": "0.0.0.0",
         "server_port": port,
@@ -1379,6 +2420,7 @@ def main() -> None:
         "inbrowser": False,
         "share": False if on_hf else True,
     }
+
     demo.queue(default_concurrency_limit=2).launch(**launch_kwargs)
 
 

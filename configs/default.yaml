@@ -1,5 +1,6 @@
 # Hopf Flux Bubble — default simulation parameters
 # Analog effective metric from defect wall + vortex flow + shift profile
+# + optional resonant electro-vibrational control (hemi-void slingshot)
 
 grid:
   nx: 128
@@ -14,6 +15,35 @@ bubble:
   use_3d_torus: true
   circulation: 0.35
   sound_speed: 1.0
+
+# Orthogonal hemi / gourd void bubble (used by hfb-slingshot)
+hemi_void:
+  major_radius: 1.0
+  wall_width: 0.22
+  elongation: 1.4
+  rear_extension: 0.45
+  front_taper: 0.7
+  axis: x
+
+# Resonant electro-vibrational control layer
+electro_vibrational:
+  inner_radius: 0.85
+  outer_radius: 1.15
+  charge_density: 1.0
+  vibration_amp: 0.15
+  phase_threshold: 0.72
+  medium_resonance: 1.0
+  drive_frequency: 1.0
+  release_detuning: 0.35
+  nucleate_duration: 1.0
+  store_duration: 2.0
+  release_duration: 0.8
+  enable_observer: true
+  observer_coupling: 0.4
+  observer_frequency: 1.0
+  hum_frequency: 1.0
+  t_max: 5.0
+  dt: 0.05
 
 warp_compare:
   vs: 0.3

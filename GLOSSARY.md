@@ -16,3 +16,11 @@
 | **Nematicon** | Self-guided optical soliton in a nematic liquid crystal |
 | **LG mode** | Laguerre-Gaussian beam with orbital angular momentum ℓ |
 | **BEC analog** | Bose-Einstein condensate used as tabletop acoustic/optical analog medium |
+| **Electro-vibrational control** | Boundary drive coupling electrostatic dual shells to vibrational modes of the flux medium |
+| **Dual charge envelopes** | Concentric shells with opposing surface charge ±σ; gap forms a capacitive control layer |
+| **Phase-alignment order ψ** | Lock quality between charged-vibration drive and medium resonance (0–1); supercritical ψ nucleates voids |
+| **Hemi-void / gourd bubble** | Asymmetric void wall elongated orthogonally; rear hemi stores, front is tapered for directional bias |
+| **Flux flywheel** | Hybrid rear-hemi reservoir: electrostatic storage + flux/twist tension (rubber-band packing) |
+| **Slingshot release** | Controlled detuning that dumps flywheel energy into a forward shift boost (directional metric reconfiguration) |
+| **Observer synchronization** | Resonant entrainment of an internal clock / operator with the macro medium “hum” as control feedback |
+| **Charged vibration** | Time-harmonic shell displacement modulated by capacitive |E|; couples to Hopfion / defect density |

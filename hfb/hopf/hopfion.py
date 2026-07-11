@@ -51,3 +51,35 @@ def hopf_charge_density(
     ax, ay, az = nx, ny, nz
     integrand = ax * bx + ay * by + az * 0.0
     return float(np.sum(integrand) * dx**2)
+
+
+def charge_modulated_hopfion(
+    x: NDArray[np.floating],
+    y: NDArray[np.floating],
+    z: NDArray[np.floating],
+    charge_density: NDArray[np.floating],
+    major_radius: float = 1.0,
+    minor_radius: float = 0.35,
+    hopf_index: int = 1,
+    polarization: float = 0.4,
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
+    """Hopfion director polarized by a dual-shell electrostatic charge field.
+
+    The electrostatic envelope tilts the local director toward the radial
+    (capacitive gap) direction — a handle for charge-modulated topological
+    texture without breaking unit normalization.
+    """
+    nx, ny, nz = toroidal_hopfion_director(
+        x, y, z, major_radius=major_radius, minor_radius=minor_radius, hopf_index=hopf_index
+    )
+    # Radial polarization preference from charge gradient proxy
+    rho = np.sqrt(x**2 + y**2) + 1e-12
+    rx, ry = x / rho, y / rho
+    c_norm = charge_density / (np.max(np.abs(charge_density)) + 1e-12)
+    strength = polarization * c_norm
+    nx = nx + strength * rx
+    ny = ny + strength * ry
+    # nz slightly suppressed where charge is strong (wall-localized tilt)
+    nz = nz * (1.0 - 0.25 * np.abs(strength))
+    norm = np.sqrt(nx**2 + ny**2 + nz**2) + 1e-12
+    return nx / norm, ny / norm, nz / norm

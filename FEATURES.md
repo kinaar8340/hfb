@@ -1,6 +1,39 @@
 # HFB Feature Guide
 
-Four headline capabilities and how to run them.
+Headline capabilities and how to run them.
+
+## 0. Resonant electro-vibrational slingshot (v0.2)
+
+**Built-in** (core `numpy`/`scipy`).
+
+**CLI:**
+```bash
+hfb-slingshot
+# or: hfb-demo --slingshot
+# → outputs/hemi_void_slingshot.png
+```
+
+**API:**
+```python
+from hfb.electro_vibrational import simulate_slingshot_cycle, SlingshotConfig
+from hfb.bubble import hemi_void_bubble_metric, HemiVoidConfig
+from hfb.utils.grid import cartesian_grid
+
+x, y = cartesian_grid(64, 64, extent=3.0)
+cycle = simulate_slingshot_cycle(x, y, t_max=5.0)
+metric = hemi_void_bubble_metric(x, y, dx=0.1, include_control=True, t=2.0)
+```
+
+**Modules:**
+- `hfb/electro_vibrational/charge_envelopes.py` — dual ±σ shells, capacitive |E|, charged vibration
+- `hfb/electro_vibrational/phase_alignment.py` — order parameter ψ, nucleation threshold
+- `hfb/electro_vibrational/observer_sync.py` — entrainment feedback with macro hum
+- `hfb/electro_vibrational/dynamics.py` — store / release flywheel cycle
+- `hfb/bubble/hemi_void.py` — gourd/melon void geometry + composite metric
+
+**Config keys:** `electro_vibrational:`, `hemi_void:` in `configs/default.yaml`.
+
+---
 
 ## 1. SymPy symbolic acoustic metrics
 

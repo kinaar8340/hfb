@@ -3,11 +3,11 @@
 [![GitHub](https://img.shields.io/badge/GitHub-kinaar8340%2Fhfb-blue)](https://github.com/kinaar8340/hfb)
 [![Ecosystem](https://img.shields.io/badge/stack-vqc__proto-lightgrey)](https://github.com/kinaar8340/vqc_proto)
 
-**Analog effective geometries from topological defects, Hopf structures, and flow-engineered metrics.**
+**Analog effective geometries from topological defects, Hopf structures, flow-engineered metrics, and resonant electro-vibrational control.**
 
-Local path: `~/Projects/hfb/` · Remote: **https://github.com/kinaar8340/hfb** (repo exists — clone or pull to sync)
+Local path: `~/Projects/hfb/` · Remote: **https://github.com/kinaar8340/hfb**
 
-Hopf Flux Bubble explores a creative synthesis: treating a "warp bubble" not as classical GR requiring exotic matter, but as an **emergent effective metric** engineered via topologically protected flux — linked Hopfions, vortex conduits, and defect-induced curvature in condensed-matter or metamaterial platforms.
+Hopf Flux Bubble explores a creative synthesis: treating a "warp bubble" not as classical GR requiring exotic matter, but as an **emergent effective metric** engineered via topologically protected flux — linked Hopfions, vortex conduits, and defect-induced curvature in condensed-matter or metamaterial platforms — with a **resonant control layer** that nucleates, shapes, and directionally releases structured void bubbles via charged vibrations and phase alignment.
 
 > **Caveat:** These are powerful *analogs* for geodesics, horizons, and defect lensing in effective metrics. They do not produce literal spacetime curvature, negative vacuum energy, or superluminal travel. This is a speculative exploration playground — not a blueprint.
 
@@ -22,36 +22,35 @@ Cross-referencing analog gravity and topological defects literature.
 | Pillar | HFB module | Idea |
 |--------|------------|------|
 | Analog gravity | `analog_gravity/` | Acoustic metric from flows; draining vortices → ergoregions |
-| Topological defects | `defects/` | ΔΩ = −λ conformal Poisson; quantized winding |
-| Hopf / Hopfions | `hopf/` | Linked toroidal flux walls; topological protection |
+| Topological defects | `defects/` | ΔΩ = −λ conformal Poisson; quantized winding; hemi-void walls |
+| Hopf / Hopfions | `hopf/` | Linked toroidal flux walls; charge-modulated textures |
 | Optics / nematics | `optics/` | LG vortices, cosmic-string lensing, ray tracing |
-| Flux bubble | `bubble/` | Shift profile + defect wall + vortex flow composite |
+| Flux bubble | `bubble/` | Shift profile + defect wall + hemi-void + vortex flow |
+| Electro-vibrational | `electro_vibrational/` | Dual charge envelopes, phase lock, flywheel slingshot |
 | BEC analog | `bec/` | Thomas-Fermi density, vortex rings, Bogoliubov dispersion |
 | SLM export | `optics/slm_export.py` | Vortex ring holograms (vqc_proto-coupled) |
 
 Broader framing: [concept thread on X](https://x.com/kinaar8340/status/2070662842496491671)
 
-## What's new in v0.1.3
+## What's new in v0.2.0 — Resonant control layer
 
-- **Toroidal bubble wall** — `toroidal_bubble_wall` defect profile (default in `configs/default.yaml`) gives smoother, Hopfion-motivated curvature vs the legacy `exponential_ring`
-- **Alcubierre symbolic layer** — `alcubierre_line_element`, `compare_effective_warp`, `lambdify_alcubierre_shift` in `analog_gravity/symbolic.py`
-- **3D visualization** — `plot_flux_bubble_3d` and `hfb-demo --viz3d` for conformal Ω + flow quivers
-- **CLI helpers** — `hfb-symbolic`, `hfb-bec-demo`, `hfb-check` for feature and ecosystem status
+Practical engineering handle on top of the topological foundations:
 
-**v0.1.4** adds pseudo-3D torus slices (`hopf.use_3d_torus`), warp fidelity comparison (`hfb-demo --compare-warp`), and topological stability diagnostics (curvature flux Φ_R, winding proxy).
+1. **Dual opposing charge envelopes** — concentric shells with ±σ; capacitive gap couples **E** to Hopf flux and vibrational modes (`electro_vibrational/charge_envelopes.py`)
+2. **Phase-alignment threshold** — order parameter ψ between charged-vibration drive and medium resonance; supercritical bifurcation nucleates / enlarges a void bubble
+3. **Orthogonal hemi / gourd void** — asymmetric defect wall with rear-hemi flywheel reservoir (`bubble/hemi_void.py`, profile `hemi_void_wall`)
+4. **Storage → release slingshot** — resonant hold, then controlled detuning dumps rear-hemi stored energy into a directional shift boost
+5. **Observer synchronization** — entrainment feedback with the macro “hum” as a control term (`observer_sync.py`)
 
-## What's new
+```bash
+hfb-slingshot                 # → outputs/hemi_void_slingshot.png
+hfb-demo --slingshot          # same
+```
 
-### v0.1.4
-- **3D torus slice** — `use_3d_torus=True` with `hopf_index` texture on the bubble wall
-- **Warp comparison** — `hfb-demo --compare-warp` plots analog vs Alcubierre shift + L¹ fidelity
-- **Topology diagnostics** — curvature flux Φ_R, linking proxy, ring winding in `StabilityReport`
-- **Notebook 01** — 3D surface + sliders for `wall_width`, `minor_radius`, `hopf_index`
+### Earlier releases
 
-### v0.1.3
-- **`toroidal_bubble_wall`** defect profile (smoother curvature: max |R| ≈ 2.6 vs ~4.7 for `exponential_ring`)
-- **Alcubierre symbolic** — `alcubierre_line_element`, `compare_effective_warp`, `lambdify_alcubierre_shift`
-- **3D viz** — `plot_flux_bubble_3d` + `hfb-demo --viz3d`
+- **v0.1.4** — 3D torus slice, warp fidelity, topology diagnostics
+- **v0.1.3** — toroidal bubble wall, Alcubierre symbolic, 3D viz
 
 ## Quick Start
 
@@ -64,15 +63,14 @@ pytest
 hfb-demo                          # → outputs/flux_bubble_demo.png
 hfb-demo --viz3d                  # + flux_bubble_3d.png
 hfb-demo --compare-warp           # toroidal vs exponential + warp fidelity
-hfb-demo --viz3d                  # also flux_bubble_3d.png
-hfb-demo --compare-warp           # toroidal vs exponential + warp fidelity
+hfb-slingshot                     # hemi-void nucleation → store → release
 hfb-symbolic                      # SymPy acoustic metrics (needs [symbolic])
 hfb-bec-demo                      # BEC acoustic backend figure
 hfb-export-slm                    # vortex ring SLM (vqc_proto LG when found)
 jupyter notebook notebooks/       # ipywidgets + feature tour
 ```
 
-See **[FEATURES.md](FEATURES.md)** for the four headline capabilities.
+See **[FEATURES.md](FEATURES.md)** for headline capabilities.
 
 ### Optional extras
 
@@ -83,16 +81,50 @@ See **[FEATURES.md](FEATURES.md)** for the four headline capabilities.
 | `slm` | `pip install -e ".[slm]"` | SLM PNG export (Pillow) |
 | `all` | `pip install -e ".[all]"` | Everything above + dev tools |
 
+## Resonant control API (sketch)
+
+```python
+from hfb.bubble import hemi_void_bubble_metric, HemiVoidConfig
+from hfb.electro_vibrational import SlingshotConfig, simulate_slingshot_cycle
+from hfb.utils.grid import cartesian_grid
+
+x, y = cartesian_grid(96, 96, extent=4.0)
+dx = float(x[0, 1] - x[0, 0])
+
+# Full cycle time series (ψ, flywheel energy, release impulse)
+cycle = simulate_slingshot_cycle(x, y, t_max=5.0, dt=0.05)
+
+# Snapshot metric with active control
+metric = hemi_void_bubble_metric(
+    x, y, dx=dx, hemi=HemiVoidConfig(), t=2.5, include_control=True
+)
+```
+
+Or via the existing composite builder:
+
+```python
+from hfb.bubble import flux_bubble_metric
+
+metric = flux_bubble_metric(
+    x, y, dx=dx,
+    defect_profile="hemi_void_wall",
+    electro_vibrational=True,
+    t=2.5,
+)
+```
+
 ## Configuration
 
-Edit `configs/default.yaml` for grid size, bubble radius, vortex circulation, and sweep ranges.
+Edit `configs/default.yaml` for grid size, bubble radius, vortex circulation,
+`hemi_void`, and `electro_vibrational` control parameters.
 
 ## Docs
 
 - [ECOSYSTEM.md](ECOSYSTEM.md) — kinaar8340 stack map
-- [GLOSSARY.md](GLOSSARY.md) — terms (Hopfion, acoustic metric, …)
+- [GLOSSARY.md](GLOSSARY.md) — terms (Hopfion, phase alignment, slingshot, …)
 - [ROADMAP.md](ROADMAP.md) — v0.2–v0.4 plan
 - [docs/REFERENCES.md](docs/REFERENCES.md) — literature pointers
+- [FEATURES.md](FEATURES.md) — how to run each capability
 
 ## Ecosystem
 

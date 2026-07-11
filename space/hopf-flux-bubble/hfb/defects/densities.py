@@ -101,6 +101,37 @@ def toroidal_bubble_wall(
     return amplitude * wall * envelope
 
 
+def hemi_void_wall(
+    x: NDArray[np.floating],
+    y: NDArray[np.floating],
+    major_radius: float = 1.0,
+    wall_width: float = 0.22,
+    amplitude: float = 1.0,
+    elongation: float = 1.4,
+    rear_extension: float = 0.45,
+    front_taper: float = 0.7,
+    hopf_index: int = 1,
+    axis: str = "x",
+) -> NDArray[np.floating]:
+    """Hemi/gourd-shaped void wall (thin wrapper around bubble.hemi_void)."""
+    from hfb.bubble.hemi_void import HemiVoidConfig, hemi_void_defect_density
+
+    return hemi_void_defect_density(
+        x,
+        y,
+        HemiVoidConfig(
+            major_radius=major_radius,
+            wall_width=wall_width,
+            amplitude=amplitude,
+            elongation=elongation,
+            rear_extension=rear_extension,
+            front_taper=front_taper,
+            hopf_index=hopf_index,
+            axis=axis,
+        ),
+    )
+
+
 def build_defect_density(
     x: NDArray[np.floating],
     y: NDArray[np.floating],
@@ -113,6 +144,9 @@ def build_defect_density(
     use_3d_torus: bool = False,
     z_slice: float = 0.0,
     hopf_index: int = 1,
+    elongation: float = 1.4,
+    rear_extension: float = 0.45,
+    axis: str = "x",
 ) -> NDArray[np.floating]:
     """Select defect density λ(x, y) by profile name."""
     major = major_radius if major_radius is not None else bubble_radius
@@ -128,6 +162,18 @@ def build_defect_density(
             use_3d_torus=use_3d_torus,
             z_slice=z_slice,
             hopf_index=hopf_index,
+        )
+    if profile == "hemi_void_wall":
+        return hemi_void_wall(
+            x,
+            y,
+            major_radius=major,
+            wall_width=wall_width,
+            amplitude=defect_amplitude,
+            elongation=elongation,
+            rear_extension=rear_extension,
+            hopf_index=hopf_index,
+            axis=axis,
         )
     if profile == "gaussian":
         return gaussian_defect(x, y, amplitude=defect_amplitude, sigma=wall_width)

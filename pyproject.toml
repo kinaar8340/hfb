@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hopf-flux-bubble"
-version = "0.1.4"
-description = "Analog gravity, topological defects, and Hopf structures for effective warp-bubble geometries"
+version = "0.2.0"
+description = "Analog gravity, topological defects, Hopf structures, and resonant electro-vibrational control for effective warp-bubble geometries"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -16,6 +16,8 @@ keywords = [
     "hopf-fibration",
     "nematic",
     "effective-metric",
+    "electro-vibrational",
+    "flux-bubble",
 ]
 dependencies = [
     "numpy>=1.24",
@@ -37,6 +39,7 @@ hfb-export-slm = "hfb.cli:export_slm_main"
 hfb-symbolic = "hfb.cli:symbolic_main"
 hfb-bec-demo = "hfb.cli:bec_main"
 hfb-check = "hfb.cli:check_ecosystem_main"
+hfb-slingshot = "hfb.cli:slingshot_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["hfb"]

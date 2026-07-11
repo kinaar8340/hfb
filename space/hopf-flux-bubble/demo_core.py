@@ -24,8 +24,74 @@ from hfb.utils.viz import plot_flux_bubble_3d
 
 GITHUB_URL = "https://github.com/kinaar8340/hfb"
 VQC_URL = "https://github.com/kinaar8340/vqc_proto"
+QVPIC_URL = "https://github.com/kinaar8340/qvpic"
 HF_SPACE_URL = "https://huggingface.co/spaces/kinaar111/hopf-flux-bubble"
-HFB_WALLPAPER_URL = "https://raw.githubusercontent.com/kinaar8340/vqc_proto/main/hfb.png"
+HFB_RAW_URL = "https://raw.githubusercontent.com/kinaar8340/vqc_proto/main/hfb.png"
+HFB_WALLPAPER_URL = HFB_RAW_URL
+GALLERY_FLUX_URL = "https://raw.githubusercontent.com/kinaar8340/hfb/main/outputs/flux_bubble_demo.png"
+GALLERY_3D_URL = "https://raw.githubusercontent.com/kinaar8340/hfb/main/outputs/flux_bubble_3d.png"
+GALLERY_WARP_URL = "https://raw.githubusercontent.com/kinaar8340/hfb/main/outputs/warp_compare.png"
+
+BOOT_QUOTE_STRING = "HOPF FLUX BUBBLE · ANALOG METRIC · VQC"
+
+CAVEATS_MD = """
+> **Effective analog only** — not literal GR curvature or superluminal transport.
+> Stability metrics (max |R|, ergo fraction, curvature flux Φ_R) are heuristic proxies
+> for tabletop exploration, not experimental claims.
+"""
+
+ONBOARDING_MD = """
+### Think effective metric, not exotic matter
+**Hopf Flux Bubble (HFB)** treats a "warp bubble" as an **emergent effective geometry** from
+topologically protected flux — linked Hopfions, vortex conduits, and defect-induced curvature in
+condensed-matter / metamaterial analogs. Not literal spacetime warping.
+
+### Three steps (60 seconds)
+1. **Run flux bubble** — conformal factor Ω, effective shift (warp analog), acoustic c_eff² − v²,
+   and conformal geodesic rays in a 4-panel figure.
+2. **Run warp compare** — L¹ fidelity between analog shift and symbolic Alcubierre β field.
+3. **Run stability sweep** — grid over bubble radius × circulation; stable_proxy, max |R|, ergo_fraction.
+
+### What the metrics mean
+| Metric | Plain English |
+|--------|----------------|
+| **stable_proxy** | Heuristic pass/fail from max |R| and ergo fraction thresholds. |
+| **max \|R\|** | Peak effective Ricci scalar on the defect wall. |
+| **curvature_flux Φ_R** | Integrated curvature through the bubble ring — topology diagnostic. |
+| **warp_fidelity** | L¹ agreement between analog shift and Alcubierre reference. |
+
+**Tip:** Default `toroidal_bubble_wall` profile is smoother than legacy `exponential_ring`.
+"""
+
+VQC_CLAIMS_MD = """
+| VQC / analog element | HFB demo shows… |
+|----------------------|-----------------|
+| **Helical / vortex geometry** | Vortex circulation + toroidal Hopf wall texture (`hopf_index`). |
+| **Nested shielding** | Defect wall + flow composite isolates effective metric inside bubble. |
+| **OAM / orbital carrier** | LG vortex optics module; SLM export via vqc_proto when available. |
+| **Quaternion / topological mux** | Hopf linking proxy + winding on braided flux structures. |
+| **Acoustic metric analog** | ds² from c_eff² − v² — analog gravity pillar (`analog_gravity/`). |
+| **Warp bubble vision** | Effective shift profile compared to Alcubierre β (`warp_compare.py`). |
+| **Optical stack link** | [orbital-braille-vqc](https://huggingface.co/spaces/kinaar111/orbital-braille-vqc) carrier layer. |
+| **Identity memory link** | [qvpic](https://huggingface.co/spaces/kinaar111/qvpic) persistent identity conduit. |
+
+Full optical prototype: [vqc_proto](https://github.com/kinaar8340/vqc_proto) · HFB analog layer: [hfb](https://github.com/kinaar8340/hfb)
+"""
+
+TERM_KEY_ACTIONS: dict[int, tuple[str, str]] = {
+    1: ("home", "Return to selection menu"),
+    2: ("status", "Live pipeline & environment"),
+    3: ("hopf", "Hopfion → flux bubble analogy"),
+    4: ("pipeline", "Defect wall + vortex flow loop"),
+    5: ("metrics", "Stability metrics baseline"),
+    6: ("build", "Build stamp & deploy info"),
+    7: ("help", "D-pad / keypad navigation"),
+    8: ("helix", "HFB flux helix — any key exits"),
+    9: ("claims", "VQC claim ↔ HFB demo map"),
+    10: ("defects", "Conformal Ω & winding"),
+    11: ("warp", "Alcubierre compare + acoustic"),
+    12: ("presets", "Default run params catalog"),
+}
 
 _WEB_DIR = Path(__file__).resolve().parent
 _DEFAULT_CFG_CANDIDATES = (
@@ -298,3 +364,153 @@ def default_run_params() -> dict[str, Any]:
         "major_radius": float(hopf.get("major_radius", bubble.get("radius", 1.0))),
         "minor_radius": float(hopf.get("minor_radius", 0.35)),
     }
+
+
+def terminal_keypad_map() -> str:
+    lines = ["Assigned prog keys (01–12):", ""]
+    for index in sorted(TERM_KEY_ACTIONS):
+        _action, desc = TERM_KEY_ACTIONS[index]
+        tag = "01 Home" if index == 1 else f"{index:02d}"
+        lines.append(f"  [{tag}]  {desc}")
+    lines.extend(
+        [
+            "",
+            "D-pad: ▲▼◀▶ move menu · enter confirm · clear blank",
+            "Keys 13–24: reserved (latch only)",
+            "Menu items 01–08 mirror d-pad selection.",
+            "08 / menu 08 → HFB flux helix screensaver (any key stops).",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def terminal_hopf_analogy() -> str:
+    defaults = default_run_params()
+    return "\n".join(
+        [
+            "Classical GR warp  →  HFB effective analog:",
+            "",
+            "  exotic matter      →  defect wall + vortex flow composite",
+            "  Alcubierre β       →  effective shift from flux_bubble_metric",
+            "  spacetime curvature →  conformal Ω = exp(2λ) from ΔΩ = −λ",
+            "  superluminal claim →  acoustic metric tabletop analog only",
+            "  Hopf structure     →  toroidal flux wall + linking proxy",
+            "",
+            f"Default profile: {defaults['defect_profile']!r}",
+            "toroidal_bubble_wall — smoother max |R| vs exponential_ring.",
+            "",
+            "Run flux bubble below → 4-panel figure + optional 3D torus.",
+        ]
+    )
+
+
+def terminal_pipeline_scope() -> str:
+    on_hf = is_hf_space()
+    grid_note = "96×96 grid on HF" if on_hf else "128×128 grid locally"
+    return "\n".join(
+        [
+            "THIS SPACE — browser simulation (you are here):",
+            "  · flux_bubble_metric → Ω, shift, acoustic g_tt",
+            "  · conformal geodesic ray trace (optics/raytrace.py)",
+            "  · stability metrics + parameter sweep",
+            "  · warp compare vs symbolic Alcubierre β",
+            "",
+            "GITHUB REPO — full HFB depth:",
+            "  · hfb-demo · hfb-symbolic · hfb-bec-demo",
+            "  · hfb/optics/slm_export.py (vqc_proto LG coupling)",
+            "  · notebooks/01_flux_bubble_explorer.ipynb",
+            "",
+            f"Grid: {grid_note}",
+            "Not literal GR — effective analog for geodesics & horizons.",
+        ]
+    )
+
+
+def terminal_metrics_baseline() -> str:
+    defaults = default_run_params()
+    return "\n".join(
+        [
+            "Default config (configs/default.yaml):",
+            "",
+            f"  bubble_radius     {defaults['bubble_radius']}",
+            f"  wall_width        {defaults['wall_width']}",
+            f"  circulation       {defaults['circulation']}",
+            f"  defect_profile    {defaults['defect_profile']!r}",
+            f"  hopf_index        {defaults['hopf_index']}",
+            "",
+            "Metrics after Run flux bubble:",
+            "  · stable_proxy — heuristic stability flag",
+            "  · max |R| — peak effective Ricci on wall",
+            "  · ergo_fraction — ergoregion-like acoustic fraction",
+            "  · curvature_flux Φ_R — ring-integrated curvature",
+            "  · linking_proxy — Hopf topological diagnostic",
+            "",
+            "toroidal_bubble_wall: max |R| ≈ 2.6 vs ~4.7 exponential_ring.",
+        ]
+    )
+
+
+def terminal_claims_snapshot() -> str:
+    lines = [
+        "VQC / analog element  →  HFB demo output:",
+        "",
+        "  Helical vortex       →  circulation + toroidal wall",
+        "  Nested shielding     →  defect wall isolates metric",
+        "  OAM carrier link     →  orbital-braille-vqc Space",
+        "  Hopf topology        →  linking_proxy + hopf_index texture",
+        "  Acoustic metric      →  c_eff² − v² panel (bottom-left)",
+        "  Warp analog          →  shift profile + Alcubierre compare",
+        "  Conformal geodesics  →  ray trace panel (bottom-right)",
+        "  SLM bench path       →  hfb-export-slm (local + vqc_proto)",
+        "",
+        "Expand Claims tab for full table · 09 Claims keypad shortcut.",
+    ]
+    return "\n".join(lines)
+
+
+def terminal_defects_shards() -> str:
+    return "\n".join(
+        [
+            "Defect curvature + conformal factor:",
+            "",
+            "  ΔΩ = −λ(r,θ)     conformal Poisson defect source",
+            "  Ω = exp(2λ)      effective metric conformal factor",
+            "  toroidal_bubble_wall — Hopfion-motivated smooth wall",
+            "  exponential_ring   — legacy ring profile (sharper |R|)",
+            "  topological_winding — quantized winding on defect loop",
+            "",
+            "Top-left panel: Ω heatmap after Run flux bubble.",
+            "Tune defect_amplitude + wall_width — watch max |R| in metrics.",
+        ]
+    )
+
+
+def terminal_warp_export() -> str:
+    return "\n".join(
+        [
+            "Warp compare (Run warp compare button):",
+            "",
+            "  analog shift     →  metric['shift'] from flux bubble",
+            "  Alcubierre β     →  symbolic reference (vs, rs, σ sliders)",
+            "  warp_fidelity    →  L¹ agreement (lower = closer match)",
+            "  max/mean |Δβ|    →  pointwise shift residual",
+            "",
+            "Also: Run stability sweep — radius × circulation grid.",
+            f"Local CLI: {GITHUB_URL}#quick-start",
+        ]
+    )
+
+
+def terminal_presets_catalog() -> str:
+    defaults = default_run_params()
+    lines = ["Default run params from configs/default.yaml:", ""]
+    for key, value in defaults.items():
+        lines.append(f"  {key:<18} {value!r}")
+    lines.extend(
+        [
+            "",
+            "Warp sliders (vs, rs, σ) apply to Run warp compare only.",
+            "Enable 3D torus slice + surface plot for Hopf texture viz.",
+        ]
+    )
+    return "\n".join(lines)
