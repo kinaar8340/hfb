@@ -32,15 +32,43 @@ Cross-referencing analog gravity and topological defects literature.
 
 Broader framing: [concept thread on X](https://x.com/kinaar8340/status/2070662842496491671)
 
-## What's new in v0.2.0 — Resonant control layer
+## What's new in v0.2.2 — Active pre-charge / pre-twist
+
+The flux transducer is now a full **bidirectional controller** (motor–generator + gearbox):
+
+- **Pre-charge** dual opposing envelopes during store (active electrostatic load)
+- **Pre-twist** rear-hemi flux flywheel via parametric azimuthal drive
+- **Ready** hold at commanded `target_energy` before release
+- Release still **reverts channels** and meters **intensity**
+- Observer can bias both pump and release throttles
+
+```python
+from hfb.electro_vibrational import FluxTransducer, TransducerConfig
+
+tx = FluxTransducer(cfg=TransducerConfig(
+    enable_precharge=True,
+    enable_pretwist=True,
+    pump_intensity=1.0,
+    target_energy=0.95,
+))
+tx.set_pump_intensity(0.8)
+tx.set_targets(target_energy=0.9)
+```
+
+### v0.2.1 — Flux transducer ledger
+
+Craft-local **three-channel ledger** + channel reversion + release throttle
+(`hfb/electro_vibrational/transducer.py`).
+
+### v0.2.0 — Resonant control layer
 
 Practical engineering handle on top of the topological foundations:
 
-1. **Dual opposing charge envelopes** — concentric shells with ±σ; capacitive gap couples **E** to Hopf flux and vibrational modes (`electro_vibrational/charge_envelopes.py`)
-2. **Phase-alignment threshold** — order parameter ψ between charged-vibration drive and medium resonance; supercritical bifurcation nucleates / enlarges a void bubble
-3. **Orthogonal hemi / gourd void** — asymmetric defect wall with rear-hemi flywheel reservoir (`bubble/hemi_void.py`, profile `hemi_void_wall`)
-4. **Storage → release slingshot** — resonant hold, then controlled detuning dumps rear-hemi stored energy into a directional shift boost
-5. **Observer synchronization** — entrainment feedback with the macro “hum” as a control term (`observer_sync.py`)
+1. **Dual opposing charge envelopes** — concentric shells with ±σ; capacitive gap couples **E** to Hopf flux and vibrational modes
+2. **Phase-alignment threshold** — order parameter ψ; supercritical nucleation of void bubbles
+3. **Orthogonal hemi / gourd void** — rear-hemi flywheel reservoir (`bubble/hemi_void.py`)
+4. **Storage → release slingshot** — phase lock → store → detuning + transducer dump
+5. **Observer synchronization** — entrainment with the macro “hum”
 
 ```bash
 hfb-slingshot                 # → outputs/hemi_void_slingshot.png

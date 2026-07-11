@@ -239,6 +239,9 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
         hopf_index=cfg.get("hopf", {}).get("hopf_index", 1),
         axis=hemi_cfg_yaml.get("axis", "x"),
     )
+    from hfb.electro_vibrational import TransducerConfig
+
+    tx_yaml = ev.get("transducer", {})
     slingshot = SlingshotConfig(
         charge=DualChargeConfig(
             inner_radius=ev.get("inner_radius", 0.85),
@@ -258,11 +261,30 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
             observer_frequency=ev.get("observer_frequency", 1.0),
             hum_frequency=ev.get("hum_frequency", 1.0),
         ),
+        transducer=TransducerConfig(
+            capacity=tx_yaml.get("capacity", 1.0),
+            w_electrostatic=tx_yaml.get("w_electrostatic", 0.40),
+            w_twist=tx_yaml.get("w_twist", 0.35),
+            w_geometric=tx_yaml.get("w_geometric", 0.25),
+            intensity=tx_yaml.get("intensity", ev.get("release_intensity", 1.0)),
+            pump_intensity=tx_yaml.get("pump_intensity", ev.get("pump_intensity", 1.0)),
+            reverse_gain=tx_yaml.get("reverse_gain", 1.35),
+            enable_precharge=tx_yaml.get("enable_precharge", True),
+            enable_pretwist=tx_yaml.get("enable_pretwist", True),
+            precharge_rate=tx_yaml.get("precharge_rate", 0.55),
+            pretwist_rate=tx_yaml.get("pretwist_rate", 0.50),
+            target_energy=tx_yaml.get("target_energy", 0.95),
+            axis=hemi.axis,
+        ),
         store_duration=ev.get("store_duration", 2.0),
+        ready_duration=ev.get("ready_duration", 0.4),
         release_duration=ev.get("release_duration", 0.8),
         nucleate_duration=ev.get("nucleate_duration", 1.0),
         release_detuning=ev.get("release_detuning", 0.35),
         enable_observer=ev.get("enable_observer", True),
+        use_transducer=ev.get("use_transducer", True),
+        release_intensity=ev.get("release_intensity", 1.0),
+        pump_intensity=ev.get("pump_intensity", 1.0),
     )
 
     t_max = float(ev.get("t_max", 5.0))
@@ -290,7 +312,7 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    fig, axes = plt.subplots(2, 3, figsize=(13, 8))
+    fig, axes = plt.subplots(2, 3, figsize=(13, 8.5))
     extent_box = [-extent, extent, -extent, extent]
 
     im0 = axes[0, 0].imshow(
@@ -300,7 +322,7 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
     plt.colorbar(im0, ax=axes[0, 0], fraction=0.046)
 
     im1 = axes[0, 1].imshow(metric_store["shift"], origin="lower", extent=extent_box)
-    axes[0, 1].set_title("Shift + flywheel (store)")
+    axes[0, 1].set_title("Shift + transducer store")
     plt.colorbar(im1, ax=axes[0, 1], fraction=0.046)
 
     im2 = axes[0, 2].imshow(
@@ -312,36 +334,67 @@ def run_slingshot_demo(cfg: dict, output_dir: Path) -> None:
     plt.colorbar(im2, ax=axes[0, 2], fraction=0.046)
 
     im3 = axes[1, 0].imshow(metric_rel["shift"], origin="lower", extent=extent_box)
-    axes[1, 0].set_title("Shift (release slingshot)")
+    axes[1, 0].set_title("Shift (channel-reverted release)")
     plt.colorbar(im3, ax=axes[1, 0], fraction=0.046)
 
-    im4 = axes[1, 1].imshow(metric_rel["omega"], origin="lower", extent=extent_box)
-    axes[1, 1].set_title("Ω at release")
-    plt.colorbar(im4, ax=axes[1, 1], fraction=0.046)
+    # Transducer ledger + active pump
+    ax = axes[1, 1]
+    if "e_electrostatic" in series:
+        ax.plot(series["t"], series["e_electrostatic"], label="E electrostatic", lw=1.2)
+        ax.plot(series["t"], series["e_twist"], label="E twist", lw=1.2)
+        ax.plot(series["t"], series["e_geometric"], label="E geometric", lw=1.2)
+    ax.plot(series["t"], series["stored"], label="ledger total", lw=1.6, color="k")
+    ax.plot(series["t"], series["impulse"], label="directed impulse", lw=1.2, ls="--")
+    if "precharge_power" in series:
+        ax.plot(series["t"], series["precharge_power"], label="pre-charge P", lw=1.0, alpha=0.8)
+        ax.plot(series["t"], series["pretwist_power"], label="pre-twist P", lw=1.0, alpha=0.8)
+    ax.set_xlabel("t")
+    ax.set_title("Ledger + active pump")
+    ax.legend(fontsize=6, loc="upper right")
+    ax.grid(True, alpha=0.3)
 
     ax = axes[1, 2]
     ax.plot(series["t"], series["psi"], label="ψ alignment", lw=1.5)
-    ax.plot(series["t"], series["stored"], label="flywheel E", lw=1.5)
-    ax.plot(series["t"], series["impulse"], label="release impulse", lw=1.2)
     ax.plot(series["t"], series["void"], label="void amp", lw=1.0, alpha=0.8)
+    if "channel_direction" in series:
+        ax.plot(
+            series["t"],
+            series["channel_direction"],
+            label="channel dir (+store/−rev)",
+            lw=1.2,
+        )
+    if "ready" in series:
+        ax.plot(series["t"], series["ready"], label="ready", lw=1.2, ls=":")
+        ax.plot(series["t"], series["pump_active"], label="pump on", lw=1.0, alpha=0.85)
+    if "pumped_total" in series:
+        ax.plot(series["t"], series["pumped_total"], label="Σ pumped", lw=1.0, alpha=0.8)
     ax.set_xlabel("t")
-    ax.set_title("Resonant control cycle")
-    ax.legend(fontsize=7, loc="upper right")
+    ax.set_title("Lock · pump · ready · channels")
+    ax.legend(fontsize=6, loc="upper right")
     ax.grid(True, alpha=0.3)
 
     fig.suptitle(
-        "HFB hemi-void slingshot | electro-vibrational resonant control (analog)",
-        fontsize=11,
+        "HFB hemi-void slingshot | transducer motor–generator (pre-charge/pre-twist + dump)",
+        fontsize=10,
     )
     fig.tight_layout()
     out_path = output_dir / "hemi_void_slingshot.png"
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     print(f"Wrote {out_path}")
+    peak_es = float(series["e_electrostatic"].max()) if "e_electrostatic" in series else 0.0
+    peak_tw = float(series["e_twist"].max()) if "e_twist" in series else 0.0
+    peak_geo = float(series["e_geometric"].max()) if "e_geometric" in series else 0.0
+    pumped = float(series["pumped_total"].max()) if "pumped_total" in series else 0.0
+    ready_frac = float(series["ready"].mean()) if "ready" in series else 0.0
     print(
         f"max ψ={series['psi'].max():.3f}  max stored={series['stored'].max():.3f}  "
         f"max impulse={series['impulse'].max():.3f}"
     )
+    print(
+        f"ledger peaks  es={peak_es:.3f}  twist={peak_tw:.3f}  geometric={peak_geo:.3f}"
+    )
+    print(f"active pump  Σ pumped={pumped:.3f}  ready duty={ready_frac:.2f}")
 
 
 def main() -> None:

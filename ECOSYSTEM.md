@@ -18,7 +18,7 @@ hfb/
 │   └── symbolic.py       # SymPy line elements, horizons, conformal Ricci
 ├── bec/                  # GPE density, vortex imprinting, Bogoliubov proxies
 ├── defects/              # Conformal Poisson ΔΩ = -λ, defect / hemi-void densities
-├── electro_vibrational/  # Dual charges, phase lock, observer sync, slingshot
+├── electro_vibrational/  # Dual charges, phase lock, observer sync, transducer, slingshot
 ├── hopf/                 # Hopf fibration, Hopfion textures, charge modulation
 ├── integration/          # vqc_proto bridge (VQC_PROTO_PATH)
 ├── optics/               # LG modes, nematic lensing, ray tracing, SLM export

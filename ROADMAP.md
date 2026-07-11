@@ -8,7 +8,7 @@
 - vqc_proto bridge (`hfb/integration/vqc_proto.py`)
 - Jupyter notebooks + pytest suite
 
-## v0.2 ✅ (current) — Resonant control layer
+## v0.2 ✅ — Resonant control layer
 
 | Task | Module |
 |------|--------|
@@ -20,13 +20,33 @@
 | Charge-modulated Hopfion texture | `hopf/hopfion.py` |
 | CLI + demo | `hfb-slingshot`, `examples/hemi_void_slingshot_demo.py` |
 
+## v0.2.1 ✅ — Flux transducer ledger
+
+| Task | Module |
+|------|--------|
+| Craft-local energy ledger (ES + twist + geometric) | `electro_vibrational/transducer.py` |
+| Flux channel reversion + intensity throttle | `transducer.py` / `dynamics.py` |
+| Defect modulation by channel polarity field | `modulate_defect_by_channels` |
+| Demo plots ledger channels + channel direction | `hfb-slingshot` |
+
+## v0.2.2 ✅ (current) — Active pre-charge / pre-twist
+
+| Task | Module |
+|------|--------|
+| Active pre-charge of dual envelopes (motor path) | `transducer.compute_pump_command` |
+| Active pre-twist of rear-hemi flywheel | `pretwist_velocity_field` |
+| READY hold at target energy + top-up | `SlingshotPhase.READY` |
+| Σ pumped fidelity accounting | `FluxTransducer.total_pumped` |
+| Independent pump vs release throttles | `pump_intensity` / `release_intensity` |
+
 ## v0.3 — Simulation depth
 
 | Task | Module |
 |------|--------|
 | 3D Hopfion texture volume + isosurfaces | `hopf/hopfion.py` |
 | Full acoustic horizon finder (draining vortex) | `analog_gravity/acoustic.py` |
-| Closed-loop slingshot PID on ψ and stored energy | `electro_vibrational/dynamics.py` |
+| Closed-loop PID on ψ, ledger channels, pump/release intensity | `electro_vibrational/` |
+| Multi-transducer array / distributed channels | `transducer.py` |
 | Parameter sweep → Fisher-Rao landscape export | `integration/` + `string_optimizer` |
 | Negative effective pressure proxy in defect cores | `defects/` |
 

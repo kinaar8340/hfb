@@ -1,14 +1,19 @@
 """Resonant electro-vibrational control of Hopf flux bubbles.
 
 Dual opposing charge envelopes, charged vibrations, phase-alignment thresholds,
-observer synchronization, and rear-hemi flywheel storage/release (slingshot).
+observer synchronization, rear-hemi flywheel storage/release (slingshot), and
+a craft-local **flux transducer** that:
 
-This is a practical control layer on top of topological defects and
-flow-engineered effective metrics — analog only.
+- actively **pre-charges** and **pre-twists** the rear hemi (motor path)
+- quantifies a three-channel energy ledger
+- **reverts flux channels** and meters release intensity (gearbox path)
+
+Analog only.
 """
 
 from .charge_envelopes import (
     DualChargeConfig,
+    apply_active_precharge,
     capacitive_field_magnitude,
     charged_vibration_field,
     dual_shell_masks,
@@ -41,6 +46,29 @@ from .phase_alignment import (
     phase_alignment_state,
     void_order_parameter,
 )
+from .transducer import (
+    ChannelState,
+    EnergyLedger,
+    FluxTransducer,
+    PumpCommand,
+    TransducerConfig,
+    TransducerReading,
+    TransducerReport,
+    accumulate_ledger,
+    apply_active_pump,
+    apply_precharge_to_fields,
+    channel_direction_for_mode,
+    channel_targets,
+    compute_pump_command,
+    dump_ledger,
+    flux_channel_polarity_field,
+    is_ready,
+    ledger_from_total,
+    precharge_boost_field,
+    pretwist_velocity_field,
+    sense_energy_channels,
+    transducer_shift_contribution,
+)
 
 __all__ = [
     "DualChargeConfig",
@@ -49,11 +77,19 @@ __all__ = [
     "SlingshotConfig",
     "SlingshotPhase",
     "SlingshotState",
+    "TransducerConfig",
+    "EnergyLedger",
+    "ChannelState",
+    "PumpCommand",
+    "FluxTransducer",
+    "TransducerReading",
+    "TransducerReport",
     "dual_shell_masks",
     "opposing_charge_density",
     "capacitive_field_magnitude",
     "charged_vibration_field",
     "electro_vibrational_defect_modulation",
+    "apply_active_precharge",
     "frequency_detuning",
     "phase_alignment_order",
     "local_phase_alignment_field",
@@ -69,4 +105,18 @@ __all__ = [
     "resonant_control_step",
     "simulate_slingshot_cycle",
     "global_alignment_at",
+    "sense_energy_channels",
+    "channel_direction_for_mode",
+    "accumulate_ledger",
+    "dump_ledger",
+    "flux_channel_polarity_field",
+    "transducer_shift_contribution",
+    "ledger_from_total",
+    "compute_pump_command",
+    "apply_active_pump",
+    "apply_precharge_to_fields",
+    "precharge_boost_field",
+    "pretwist_velocity_field",
+    "channel_targets",
+    "is_ready",
 ]

@@ -75,10 +75,16 @@ def test_observer_entrainment_peak():
 
 
 def test_cycle_phases():
-    cfg = SlingshotConfig(nucleate_duration=1.0, store_duration=2.0, release_duration=0.8)
+    cfg = SlingshotConfig(
+        nucleate_duration=1.0,
+        store_duration=2.0,
+        ready_duration=0.4,
+        release_duration=0.8,
+    )
     assert cycle_phase_at_time(0.1, cfg) == SlingshotPhase.NUCLEATE
     assert cycle_phase_at_time(1.5, cfg) == SlingshotPhase.STORE
-    assert cycle_phase_at_time(3.2, cfg) == SlingshotPhase.RELEASE
+    assert cycle_phase_at_time(3.1, cfg) == SlingshotPhase.READY
+    assert cycle_phase_at_time(3.6, cfg) == SlingshotPhase.RELEASE
 
 
 def test_charged_vibration_finite():
@@ -187,3 +193,191 @@ def test_charge_modulated_hopfion_unit():
     nx, ny, nz = charge_modulated_hopfion(x, y, z, sigma)
     norm = np.sqrt(nx**2 + ny**2 + nz**2)
     assert np.allclose(norm, 1.0, atol=1e-5)
+
+
+def test_transducer_ledger_three_channels():
+    from hfb.electro_vibrational import (
+        FluxTransducer,
+        TransducerConfig,
+        sense_energy_channels,
+    )
+    from hfb.electro_vibrational.charge_envelopes import capacitive_field_magnitude
+
+    x, y = cartesian_grid(40, 40, extent=3.0)
+    dx = float(x[0, 1] - x[0, 0])
+    e = capacitive_field_magnitude(x, y)
+    sigma = opposing_charge_density(x, y)
+    void = np.exp(-(x**2 + y**2) / 2.0)
+    reading = sense_energy_channels(
+        x, y, e_field=e, charge_density=sigma, velocity=None,
+        void_amplitude_field=void, psi=0.9, dx=dx,
+    )
+    assert reading.power_total >= 0.0
+    assert reading.power_electrostatic >= 0.0
+
+    tx = FluxTransducer(cfg=TransducerConfig(capacity=1.0, intensity=1.0))
+    for _ in range(20):
+        rep = tx.step(
+            x, y, mode="store", e_field=e, charge_density=sigma,
+            void_amplitude_field=void, psi=0.95, dt=0.1, dx=dx,
+        )
+    assert rep.ledger.total > 0.0
+    assert rep.ledger.electrostatic > 0.0
+    assert rep.ledger.twist > 0.0
+    assert rep.ledger.geometric > 0.0
+    assert rep.channels.direction > 0.0
+    assert not rep.channels.reversed
+
+    # Release reverts channels and produces directed impulse
+    rep_r = tx.step(
+        x, y, mode="release", e_field=e, charge_density=sigma,
+        void_amplitude_field=void, psi=0.3, dt=0.1, dx=dx, intensity=1.0,
+    )
+    assert rep_r.channels.reversed
+    assert rep_r.channels.direction < 0.0
+    assert rep_r.directed_impulse > 0.0
+    assert rep_r.dump.total > 0.0
+
+
+def test_dump_ledger_respects_intensity():
+    from hfb.electro_vibrational import EnergyLedger, TransducerConfig, dump_ledger
+
+    ledger = EnergyLedger(electrostatic=0.4, twist=0.3, geometric=0.3)
+    cfg = TransducerConfig(capacity=1.0, reverse_gain=1.0, release_efficiency=1.0)
+    _, dump_hi, imp_hi = dump_ledger(ledger, dt=0.1, cfg=cfg, intensity=1.0)
+    _, dump_lo, imp_lo = dump_ledger(ledger, dt=0.1, cfg=cfg, intensity=0.2)
+    assert dump_hi.total > dump_lo.total
+    assert imp_hi > imp_lo
+
+
+def test_simulate_cycle_tracks_ledger_channels():
+    x, y = cartesian_grid(32, 32, extent=2.5)
+    cfg = SlingshotConfig(
+        nucleate_duration=0.4,
+        store_duration=1.5,
+        release_duration=0.8,
+        use_transducer=True,
+        release_intensity=1.0,
+        enable_observer=True,
+        phase=PhaseAlignmentConfig(threshold=0.5, drive_frequency=1.0, medium_resonance=1.0),
+    )
+    result = simulate_slingshot_cycle(x, y, t_max=3.5, dt=0.1, cfg=cfg)
+    series = result["series"]
+    assert series["stored"].max() > 0.0
+    assert series["e_electrostatic"].max() > 0.0
+    assert series["e_twist"].max() > 0.0
+    assert series["e_geometric"].max() > 0.0
+    # Channel direction should go positive (store) then negative (release)
+    assert series["channel_direction"].max() > 0.0
+    assert series["channel_direction"].min() < 0.0
+    assert series["impulse"].max() > 0.0
+
+
+def test_legacy_flywheel_path_still_works():
+    x, y = cartesian_grid(24, 24, extent=2.0)
+    cfg = SlingshotConfig(
+        use_transducer=False,
+        store_duration=1.5,
+        release_duration=0.8,
+        nucleate_duration=0.3,
+        store_rate=1.0,
+        release_rate=2.0,
+        phase=PhaseAlignmentConfig(threshold=0.5, drive_frequency=1.0, medium_resonance=1.0),
+    )
+    result = simulate_slingshot_cycle(x, y, t_max=3.0, dt=0.1, cfg=cfg)
+    assert result["series"]["stored"].max() > 0.0
+
+
+def test_active_precharge_and_pretwist_pump():
+    from hfb.electro_vibrational import (
+        FluxTransducer,
+        TransducerConfig,
+        compute_pump_command,
+        EnergyLedger,
+        pretwist_velocity_field,
+        precharge_boost_field,
+    )
+    from hfb.electro_vibrational.charge_envelopes import capacitive_field_magnitude
+
+    x, y = cartesian_grid(40, 40, extent=3.0)
+    dx = float(x[0, 1] - x[0, 0])
+    e = capacitive_field_magnitude(x, y)
+    sigma = opposing_charge_density(x, y)
+    void = np.exp(-(x**2 + y**2) / 2.0)
+
+    cfg = TransducerConfig(
+        capacity=1.0,
+        enable_precharge=True,
+        enable_pretwist=True,
+        precharge_rate=0.8,
+        pretwist_rate=0.7,
+        pump_intensity=1.0,
+        target_energy=0.9,
+        pump_requires_lock=True,
+        psi_pump_threshold=0.5,
+    )
+    # Empty ledger under lock → strong pump command
+    pump = compute_pump_command(EnergyLedger(), psi=0.95, cfg=cfg, mode="store")
+    assert pump.pump_active
+    assert pump.precharge_power > 0.0
+    assert pump.pretwist_power > 0.0
+    assert pump.charge_boost > 0.0
+    assert pump.twist_drive > 0.0
+
+    # Unlocked → no pump when requires_lock
+    pump_off = compute_pump_command(EnergyLedger(), psi=0.1, cfg=cfg, mode="store")
+    assert not pump_off.pump_active
+
+    tx = FluxTransducer(cfg=cfg)
+    for _ in range(25):
+        rep = tx.step(
+            x, y, mode="store", e_field=e, charge_density=sigma,
+            void_amplitude_field=void, psi=0.95, dt=0.1, dx=dx, pump_intensity=1.0,
+        )
+    assert rep.ledger.total >= 0.9 * cfg.capacity * 0.85  # near target
+    assert rep.pump is not None
+    assert tx.total_pumped.total > 0.0
+    assert rep.pump.ready or rep.ledger.total > 0.5
+
+    # Spatial drives
+    bf = precharge_boost_field(x, y, 0.5, cfg)
+    assert np.max(bf) > 0.0
+    vx, vy = pretwist_velocity_field(x, y, 0.5, cfg)
+    assert np.max(np.abs(vx)) > 0.0 or np.max(np.abs(vy)) > 0.0
+
+
+def test_simulate_cycle_pumps_then_ready_then_release():
+    x, y = cartesian_grid(32, 32, extent=2.5)
+    cfg = SlingshotConfig(
+        nucleate_duration=0.3,
+        store_duration=1.5,
+        ready_duration=0.4,
+        release_duration=0.8,
+        use_transducer=True,
+        pump_intensity=1.0,
+        release_intensity=1.0,
+        enable_observer=True,
+        phase=PhaseAlignmentConfig(threshold=0.5, drive_frequency=1.0, medium_resonance=1.0),
+        transducer=None,  # defaults with precharge/pretwist on
+    )
+    # Ensure pump rates are healthy via default TransducerConfig
+    from hfb.electro_vibrational import TransducerConfig
+
+    cfg.transducer = TransducerConfig(
+        capacity=1.0,
+        enable_precharge=True,
+        enable_pretwist=True,
+        precharge_rate=0.7,
+        pretwist_rate=0.65,
+        target_energy=0.9,
+        pump_intensity=1.0,
+    )
+    result = simulate_slingshot_cycle(x, y, t_max=4.0, dt=0.1, cfg=cfg)
+    series = result["series"]
+    assert series["precharge_power"].max() > 0.0
+    assert series["pretwist_power"].max() > 0.0
+    assert series["pumped_total"].max() > 0.0
+    assert series["ready"].max() > 0.5  # becomes ready at some point
+    assert "ready" in series["phase"] or series["ready"].max() > 0.0
+    assert series["impulse"].max() > 0.0
+    assert series["channel_direction"].min() < 0.0  # release reversion

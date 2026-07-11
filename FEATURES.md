@@ -28,10 +28,25 @@ metric = hemi_void_bubble_metric(x, y, dx=0.1, include_control=True, t=2.0)
 - `hfb/electro_vibrational/charge_envelopes.py` — dual ±σ shells, capacitive |E|, charged vibration
 - `hfb/electro_vibrational/phase_alignment.py` — order parameter ψ, nucleation threshold
 - `hfb/electro_vibrational/observer_sync.py` — entrainment feedback with macro hum
-- `hfb/electro_vibrational/dynamics.py` — store / release flywheel cycle
+- `hfb/electro_vibrational/transducer.py` — craft flux transducer: ledger, channel reversion, throttle
+- `hfb/electro_vibrational/dynamics.py` — store / release cycle wired through the transducer
 - `hfb/bubble/hemi_void.py` — gourd/melon void geometry + composite metric
 
-**Config keys:** `electro_vibrational:`, `hemi_void:` in `configs/default.yaml`.
+**Flux transducer (v0.2.2):** craft-local **motor–generator + gearbox** — not a global curvature-flux term.
+
+| Mode | Behavior |
+|------|----------|
+| **Store** | Active **pre-charge** (dual shells) + **pre-twist** (flywheel) toward targets, plus passive collection |
+| **Ready** | Hold / top-up at `target_energy`; channels stay inbound |
+| **Release** | **Revert channels** + **intensity** throttle → directed impulse |
+
+| Channel | Sense / pump proxy |
+|---------|-------------------|
+| Electrostatic | ∫ ½ E² rear + active pre-charge rate |
+| Twist | ∫ \|v\|·\|σ\|·ψ + active pretwist rate |
+| Geometric | ∫ η² rear + small co-pump from packing |
+
+**Config keys:** `electro_vibrational:`, `electro_vibrational.transducer:` (`enable_precharge`, `enable_pretwist`, `pump_intensity`, `target_energy`), `hemi_void:`.
 
 ---
 

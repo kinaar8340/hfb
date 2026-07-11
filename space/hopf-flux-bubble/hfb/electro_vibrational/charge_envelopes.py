@@ -133,3 +133,17 @@ def electro_vibrational_defect_modulation(
     """
     c_norm = coupling / (np.max(np.abs(coupling)) + 1e-12)
     return base_defect * (1.0 + strength * c_norm)
+
+
+def apply_active_precharge(
+    charge_density: NDArray[np.floating],
+    e_field: NDArray[np.floating],
+    boost_field: NDArray[np.floating],
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Apply transducer pre-charge boost to dual-shell σ and capacitive |E|.
+
+    Thin wrapper used by the flux transducer motor path during store/ready.
+    ``boost_field`` is a spatial multiplicative increment (0 = no boost).
+    """
+    factor = 1.0 + boost_field
+    return charge_density * factor, e_field * factor
