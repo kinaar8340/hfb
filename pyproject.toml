@@ -27,7 +27,7 @@ dependencies = [
     # Shared core — Hopf maps, defects, grids (canonical).
     # Hatch disallows git URL deps unless allow-direct-references is set.
     # Prefer local editable first:  pip install -e ../flux_hopf_lib
-    # Or:  pip install "flux-hopf-lib @ git+https://github.com/kinaar8340/flux_hopf_lib.git@main"
+    # Or:  pip install "flux-hopf-lib @ git+https://github.com/kinaar8340/flux_hopf_lib.git@v0.1.0"
     "flux-hopf-lib>=0.1.0",
 ]
 
