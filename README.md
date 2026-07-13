@@ -127,7 +127,7 @@ cd ~/Projects/hfb
 python3 -m venv .venv && source .venv/bin/activate
 # Install shared core first (not on PyPI yet):
 pip install -e ../flux_hopf_lib
-# or: pip install "flux-hopf-lib==0.2.1"
+# or: pip install "flux-hopf-lib==0.2.2"
 pip install -e ".[all]"
 hfb-check                         # feature + vqc_proto availability
 pytest
