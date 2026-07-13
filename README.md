@@ -125,6 +125,8 @@ hfb-demo --slingshot          # same
 ```bash
 cd ~/Projects/hfb
 python3 -m venv .venv && source .venv/bin/activate
+# Shared core (editable if developing flux_hopf_lib alongside):
+#   pip install -e ../flux_hopf_lib
 pip install -e ".[all]"
 hfb-check                         # feature + vqc_proto availability
 pytest
@@ -137,6 +139,9 @@ hfb-bec-demo                      # BEC acoustic backend figure
 hfb-export-slm                    # vortex ring SLM (vqc_proto LG when found)
 jupyter notebook notebooks/       # ipywidgets + feature tour
 ```
+
+Hopf maps, hopfions, shared defect densities, and grids re-export from
+**[flux_hopf_lib](https://github.com/kinaar8340/flux_hopf_lib)** (`from hfb.hopf import hopf_map` unchanged).
 
 See **[FEATURES.md](FEATURES.md)** for headline capabilities.
 
