@@ -24,6 +24,9 @@ cp "$ROOT/web/build_info.py" "$DST/"
 cp "$ROOT/web/gradio_demo.py" "$DST/app.py"
 
 cat > "$DST/requirements.txt" <<'EOF'
+# Shared core — Hopf maps, defects, grids (canonical)
+flux-hopf-lib @ git+https://github.com/kinaar8340/flux_hopf_lib.git@main
+
 numpy>=1.24.0,<3.0.0
 scipy>=1.10.0
 matplotlib>=3.7.0
