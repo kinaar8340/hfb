@@ -25,7 +25,7 @@ cp "$ROOT/web/gradio_demo.py" "$DST/app.py"
 
 cat > "$DST/requirements.txt" <<'EOF'
 # Shared core — Hopf maps, defects, grids (canonical)
-flux-hopf-lib==0.1.0
+flux-hopf-lib==0.2.1
 
 numpy>=1.24.0,<3.0.0
 scipy>=1.10.0
