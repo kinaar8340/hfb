@@ -24,10 +24,16 @@ dependencies = [
     "scipy>=1.10",
     "matplotlib>=3.7",
     "pyyaml>=6.0",
-    # Shared core — Hopf maps, defects, grids (canonical)
-    # Local: pip install -e ../flux_hopf_lib
-    "flux-hopf-lib @ git+https://github.com/kinaar8340/flux_hopf_lib.git@main",
+    # Shared core — Hopf maps, defects, grids (canonical).
+    # Hatch disallows git URL deps unless allow-direct-references is set.
+    # Prefer local editable first:  pip install -e ../flux_hopf_lib
+    # Or:  pip install "flux-hopf-lib @ git+https://github.com/kinaar8340/flux_hopf_lib.git@main"
+    "flux-hopf-lib>=0.1.0",
 ]
+
+# Allow PEP 508 direct references if someone pins a git URL in an override/env.
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "ruff>=0.4"]
