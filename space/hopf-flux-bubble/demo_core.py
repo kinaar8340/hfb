@@ -56,7 +56,7 @@ condensed-matter / metamaterial analogs. Not literal spacetime warping.
 | Metric | Plain English |
 |--------|----------------|
 | **stable_proxy** | Heuristic pass/fail from max |R| and ergo fraction thresholds. |
-| **max \|R\|** | Peak effective Ricci scalar on the defect wall. |
+| **max |R|** | Peak effective Ricci scalar on the defect wall. |
 | **curvature_flux Φ_R** | Integrated curvature through the bubble ring — topology diagnostic. |
 | **warp_fidelity** | L¹ agreement between analog shift and Alcubierre reference. |
 
