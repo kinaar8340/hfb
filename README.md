@@ -1,5 +1,7 @@
 # Hopf Flux Bubble (HFB)
 
+Satellite behind the portal — a **Model**, not a peer product. Not the QGA spine.
+
 [![GitHub](https://img.shields.io/badge/GitHub-kinaar8340%2Fhfb-blue)](https://github.com/kinaar8340/hfb)
 [![Ecosystem](https://img.shields.io/badge/stack-vqc__proto-lightgrey)](https://github.com/kinaar8340/vqc_proto)
 
